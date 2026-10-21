@@ -80,6 +80,7 @@ class HandTest {
         Hand hand = new Hand();
 
         assertEquals(0, hand.getCardCount());
+        assertEquals(0, hand.calculateScore());
     }
 
     @Test
