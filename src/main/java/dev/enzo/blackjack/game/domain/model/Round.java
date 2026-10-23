@@ -37,4 +37,44 @@ public class Round {
         return result;
     }
 
+    public void start() {
+        if (this.status != RoundStatus.WAITING_TO_START) {
+            throw new IllegalStateException("Round is already started!");
+        }
+        this.playerHand.addCard(this.deck.cardDraw());
+        this.dealerHand.addCard(this.deck.cardDraw());
+        this.playerHand.addCard(this.deck.cardDraw());
+        this.dealerHand.addCard(this.deck.cardDraw());
+        this.status = RoundStatus.PLAYER_TURN;
+    }
+
+    public void hit() {
+        if (this.status != RoundStatus.PLAYER_TURN) {
+            throw new IllegalStateException("It's not player turn!");
+        }
+        this.playerHand.addCard(this.deck.cardDraw());
+
+        if  (this.playerHand.isBusted()) {
+            this.status = RoundStatus.FINISHED;
+            this.result = RoundResult.DEALER_WIN;
+        }
+    }
+
+    public void stand() {
+        if (this.status != RoundStatus.PLAYER_TURN) {
+            throw new IllegalStateException("It's not the player turn!");
+        }
+        this.status = RoundStatus.DEALER_TURN;
+    }
+
+    public void playDealerTurn() {
+        if (this.status != RoundStatus.DEALER_TURN) {
+            throw new IllegalStateException("It's not the dealer turn!");
+        }
+
+        while(this.dealerHand.calculateScore() < 17) {
+            this.dealerHand.addCard(this.deck.cardDraw());
+        }
+    }
+
 }
