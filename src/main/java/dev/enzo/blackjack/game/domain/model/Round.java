@@ -45,12 +45,29 @@ public class Round {
         this.dealerHand.addCard(this.deck.cardDraw());
         this.playerHand.addCard(this.deck.cardDraw());
         this.dealerHand.addCard(this.deck.cardDraw());
+
+        if (this.playerHand.isBlackJack() && this.dealerHand.isBlackJack()) {
+            this.result = RoundResult.PUSH;
+        } else if (this.playerHand.isBlackJack()) {
+            this.result = RoundResult.PLAYER_WIN;
+        } else if (this.dealerHand.isBlackJack()) {
+            this.result = RoundResult.DEALER_WIN;
+        }
+
+        if (this.result != null) {
+            this.status = RoundStatus.FINISHED;
+            return;
+        }
         this.status = RoundStatus.PLAYER_TURN;
     }
 
     public void hit() {
         if (this.status != RoundStatus.PLAYER_TURN) {
             throw new IllegalStateException("It's not player turn!");
+        }
+
+        if (this.playerHand.calculateScore() == 21) {
+            throw new IllegalStateException("Cannot hit with 21");
         }
         this.playerHand.addCard(this.deck.cardDraw());
 
@@ -69,12 +86,27 @@ public class Round {
 
     public void playDealerTurn() {
         if (this.status != RoundStatus.DEALER_TURN) {
-            throw new IllegalStateException("It's not the dealer turn!");
+            throw new IllegalStateException("It's not the dealer's turn!");
         }
 
-        while(this.dealerHand.calculateScore() < 17) {
+        while (this.dealerHand.calculateScore() < 17) {
             this.dealerHand.addCard(this.deck.cardDraw());
         }
+
+        int playerScore = this.playerHand.calculateScore();
+        int dealerScore = this.dealerHand.calculateScore();
+
+        if (this.dealerHand.isBusted()) {
+            this.result = RoundResult.PLAYER_WIN;
+        } else if (playerScore > dealerScore) {
+            this.result = RoundResult.PLAYER_WIN;
+        } else if (dealerScore > playerScore) {
+            this.result = RoundResult.DEALER_WIN;
+        } else {
+            this.result = RoundResult.PUSH;
+        }
+
+        this.status = RoundStatus.FINISHED;
     }
 
 }
