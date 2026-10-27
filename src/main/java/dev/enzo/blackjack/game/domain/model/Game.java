@@ -55,12 +55,16 @@ public class Game {
         if (this.currentRound != null && !this.roundResultRecorded) {
             throw new IllegalStateException("Previous round result is not recorded!");
         }
-        this.currentRound = new Round(new Deck());
+        Deck deck = new Deck();
+        deck.shuffle();
+
+        this.currentRound = new Round(deck);
         this.roundResultRecorded = false;
     }
 
     public GameStatisticsView getStatistics() {
-        return statistics;
+        return new GameStatisticsSnapshot(this.statistics.getWins(), this.statistics.getLosses(),
+                this.statistics.getPushes());
     }
 
     public void recordRoundResult() {

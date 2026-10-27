@@ -21,12 +21,12 @@ public class Round {
 
     }
 
-    public Hand getPlayerHand() {
-        return playerHand;
+    public HandView getPlayerHand() {
+        return new HandSnapshot(this.playerHand.getCards());
     }
 
-    public Hand getDealerHand() {
-        return dealerHand;
+    public HandView getDealerHand() {
+        return new HandSnapshot(this.dealerHand.getCards());
     }
 
     public RoundStatus getStatus() {

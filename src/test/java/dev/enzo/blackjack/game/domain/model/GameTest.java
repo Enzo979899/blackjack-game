@@ -80,17 +80,14 @@ class GameTest {
     }
 
     @Test
-    void shouldNotStartRoundWhenGameIsWaitingOrFinished() {
+    void shouldNotStartRoundWhenGameIsWaiting() {
         Game game = new Game();
 
-        assertThrows(IllegalStateException.class, game::startRound);
-    }
-
-    @Test
-    void shouldNotStartRoundWhenGameIsFinishing() {
-        Game game = new Game();
+        assertEquals(GameStatus.WAITING, game.getStatus());
 
         assertThrows(IllegalStateException.class, game::startRound);
+
+        assertNull(game.getCurrentRound());
     }
 
     @Test
@@ -416,4 +413,13 @@ class GameTest {
         assertEquals(0, statistics.getPushes());
     }
 
+    @Test
+    void shouldNotExposeMutableGameStatistics() {
+        Game game = new Game();
+
+        GameStatisticsView statistics = game.getStatistics();
+
+        assertInstanceOf(GameStatisticsSnapshot.class, statistics);
+        assertFalse(statistics instanceof GameStatistics);
+    }
 }
