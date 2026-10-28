@@ -54,7 +54,7 @@ application-secret.yaml
 *.iws
 *.iml
 *.ipr
-out/
+/out/
 
 # Netbeans
 /nbproject/private/
