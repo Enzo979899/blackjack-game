@@ -1,24 +1,35 @@
 package dev.enzo.blackjack.game.domain.model;
 
 
+import java.util.Objects;
+import java.util.UUID;
+
 public class Round {
+    private final UUID roundId;
+    private final UUID playerId;
     private final Hand playerHand;
     private final Hand dealerHand;
     private final Deck deck;
     private RoundStatus status;
     private RoundResult result;
 
-    public Round(Deck deck) {
-        if (deck == null) {
-            throw new NullPointerException("The deck cannot be null");
-        }
-
-        this.deck = deck;
+    public Round(UUID roundId, UUID playerId, Deck deck) {
+        this.roundId = Objects.requireNonNull(roundId, "Round ID cannot be null");
+        this.playerId= Objects.requireNonNull(playerId, "Player ID cannot be null");
+        this.deck = Objects.requireNonNull(deck, "The deck cannot be null");
         this.playerHand = new Hand();
         this.dealerHand = new Hand();
         this.status = RoundStatus.WAITING_TO_START;
         this.result = null;
 
+    }
+
+    public UUID getPlayerId() {
+        return playerId;
+    }
+
+    public UUID getRoundId() {
+        return roundId;
     }
 
     public HandView getPlayerHand() {
