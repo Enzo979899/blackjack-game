@@ -1,7 +1,10 @@
 package dev.enzo.blackjack.game.domain.model;
 
 
+import org.hibernate.validator.constraints.UUID;
+
 public class Round {
+    private final UUID roundId;
     private final Hand playerHand;
     private final Hand dealerHand;
     private final Deck deck;

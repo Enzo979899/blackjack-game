@@ -56,7 +56,7 @@ public class Game {
             throw new IllegalStateException("Previous round result is not recorded!");
         }
         Deck deck = new Deck();
-        deck.shuffle();
+        deck.shuffle(); //inject
 
         this.currentRound = new Round(deck);
         this.roundResultRecorded = false;
