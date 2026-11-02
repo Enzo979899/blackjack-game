@@ -3,6 +3,8 @@ package dev.enzo.blackjack.game.domain.model;
 import org.junit.jupiter.api.Test;
 import org.mockito.configuration.IMockitoConfiguration;
 
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -10,7 +12,7 @@ class RoundTest {
 
     @Test
     void shouldCreateRoundWithEmptyHands() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         assertEquals(0, round.getDealerHand().getCardCount());
         assertEquals(0, round.getPlayerHand().getCardCount());
@@ -18,26 +20,26 @@ class RoundTest {
 
     @Test
     void shouldCreateRoundWithoutResult() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         assertNull(round.getResult());
     }
 
     @Test
     void shouldRejectNullDeck() {
-        assertThrows(NullPointerException.class, () -> new Round(null));
+        assertThrows(NullPointerException.class, () -> new Round(UUID.randomUUID(), UUID.randomUUID(), null));
     }
 
     @Test
     void shouldCreateRoundWithInitialStatus() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         assertEquals(RoundStatus.WAITING_TO_START, round.getStatus());
     }
 
     @Test
     void shoulStartRound() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -46,7 +48,7 @@ class RoundTest {
 
     @Test
     void shoulNotStartRoundTwice() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -55,7 +57,7 @@ class RoundTest {
 
     @Test
     void shouldDelaTwoCardsToPlayerWhenRoundStarts() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -64,7 +66,7 @@ class RoundTest {
 
     @Test
     void shouldDealTwoCardsToDealerWhenRoundStarts() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -74,7 +76,7 @@ class RoundTest {
     @Test
     void shouldRemoveFourCardsFromDeckAfterRoundStarts() {
         Deck deck = new Deck();
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -84,7 +86,7 @@ class RoundTest {
     @Test
     void shouldNotDrawMoreCardsWhenStartingRoundTwice() {
         Deck deck = new Deck();
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -94,7 +96,7 @@ class RoundTest {
 
     @Test
     void shouldAddCardToPlayerHandWhenHit() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -105,14 +107,14 @@ class RoundTest {
 
     @Test
     void shouldNotHitBeforeRoundStarts() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         assertThrows(IllegalStateException.class, round::hit);
     }
 
     @Test
     void shouldFinishRoundWhenPlayerBusts() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -126,7 +128,7 @@ class RoundTest {
 
     @Test
     void shouldNotAllowHitAfterPlayerBusts() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -139,7 +141,7 @@ class RoundTest {
 
     @Test
     void shouldChangeToDealerTurnWhenPlayerStands() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -150,7 +152,7 @@ class RoundTest {
 
     @Test
     void shouldNotAllowHitAfterPlayerStands() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -161,7 +163,7 @@ class RoundTest {
 
     @Test
     void shouldNotAllowStandTwice() {
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -177,7 +179,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.CLUBS, Rank.TEN), new Card(Suit.DIAMONDS, Rank.SIX),
                 new Card(Suit.SPADES, Rank.SEVEN), new Card(Suit.SPADES, Rank.TEN), new Card(Suit.HEARTS, Rank.FOUR));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -199,7 +201,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.HEARTS, Rank.TEN), new Card(Suit.DIAMONDS, Rank.SEVEN),
                 new Card(Suit.DIAMONDS, Rank.EIGHT), new Card(Suit.SPADES, Rank.TEN));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -220,7 +222,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.CLUBS, Rank.TEN), new Card(Suit.DIAMONDS, Rank.SIX),
                 new Card(Suit.SPADES, Rank.EIGHT), new Card(Suit.SPADES, Rank.TEN), new Card(Suit.CLUBS, Rank.KING));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -240,7 +242,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.SPADES, Rank.TEN), new Card(Suit.SPADES, Rank.EIGHT),
                 new Card(Suit.DIAMONDS, Rank.TEN), new Card(Suit.HEARTS, Rank.TEN));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -259,7 +261,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.DIAMONDS, Rank.TEN), new Card(Suit.SPADES, Rank.TEN),
                 new Card(Suit.SPADES, Rank.EIGHT), new Card(Suit.SPADES, Rank.KING));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -279,7 +281,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.SPADES, Rank.TEN), new Card(Suit.DIAMONDS, Rank.TEN),
                 new Card(Suit.DIAMONDS, Rank.EIGHT), new Card(Suit.CLUBS, Rank.EIGHT));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -298,7 +300,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.HEARTS, Rank.AS), new Card(Suit.CLUBS, Rank.NINE),
                 new Card(Suit.SPADES, Rank.KING), new Card(Suit.HEARTS, Rank.SEVEN));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -313,7 +315,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.HEARTS, Rank.AS), new Card(Suit.CLUBS, Rank.KING),
                 new Card(Suit.DIAMONDS, Rank.QUEEN), new Card(Suit.DIAMONDS, Rank.AS));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -328,7 +330,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.CLUBS, Rank.TEN), new Card(Suit.HEARTS, Rank.AS),
                 new Card(Suit.SPADES, Rank.EIGHT), new Card(Suit.DIAMONDS, Rank.KING));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -343,7 +345,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.CLUBS, Rank.TEN), new Card(Suit.DIAMONDS, Rank.NINE),
                 new Card(Suit.SPADES, Rank.FIVE), new Card(Suit.HEARTS, Rank.SEVEN), new Card(Suit.CLUBS, Rank.SIX));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -363,7 +365,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.CLUBS, Rank.TEN), new Card(Suit.DIAMONDS, Rank.NINE),
                 new Card(Suit.CLUBS, Rank.FIVE), new Card(Suit.HEARTS, Rank.SEVEN), new Card(Suit.CLUBS, Rank.SIX));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -380,7 +382,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.CLUBS, Rank.TEN), new Card(Suit.DIAMONDS, Rank.NINE),
                 new Card(Suit.SPADES, Rank.FIVE), new Card(Suit.HEARTS, Rank.SEVEN), new Card(Suit.CLUBS, Rank.SIX));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -397,7 +399,7 @@ class RoundTest {
     @Test
     void shouldNotAllowDealerTurnWhileItIsPlayerTurn() {
 
-        Round round = new Round(new Deck());
+       Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), new Deck());
 
         round.start();
 
@@ -414,7 +416,7 @@ class RoundTest {
         when(deck.cardDraw()).thenReturn(new Card(Suit.HEARTS, Rank.TEN), new Card(Suit.CLUBS, Rank.NINE),
                 new Card(Suit.SPADES, Rank.EIGHT), new Card(Suit.DIAMONDS, Rank.KING));
 
-        Round round = new Round(deck);
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
 
         round.start();
 
@@ -429,4 +431,26 @@ class RoundTest {
 
         verify(deck, times(4)).cardDraw();
     }
+
+    @Test
+    void shouldKeepRoundIdAndPlayerId() {
+        UUID roundId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Deck deck = new Deck();
+        Round round = new Round(roundId, playerId, deck);
+
+        assertEquals(roundId, round.getRoundId());
+        assertEquals(playerId, round.getPlayerId());
+    }
+
+    @Test
+    void shouldRejectNullIdentifiers() {
+        UUID roundId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        Deck deck = new Deck();
+
+        assertThrows(NullPointerException.class, () -> new Round(null, playerId, deck));
+        assertThrows(NullPointerException.class, () -> new Round(roundId, null, deck));
+    }
+
 }
