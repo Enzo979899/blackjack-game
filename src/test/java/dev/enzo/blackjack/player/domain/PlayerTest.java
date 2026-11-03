@@ -1,5 +1,6 @@
 package dev.enzo.blackjack.player.domain;
 
+import dev.enzo.blackjack.player.domain.model.Player;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;

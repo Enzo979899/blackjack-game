@@ -1,4 +1,4 @@
-package dev.enzo.blackjack.player.domain;
+package dev.enzo.blackjack.player.domain.model;
 
 import java.util.Objects;
 import java.util.UUID;
