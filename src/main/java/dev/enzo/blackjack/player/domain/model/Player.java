@@ -6,10 +6,16 @@ import java.util.UUID;
 public class Player {
     private final UUID id;
     private final String name;
+    private int wins;
+    private int losses;
+    private int draws;
 
     public Player(UUID id, String name) {
         this.id = Objects.requireNonNull(id, "ID cannot be null");
         this.name = Objects.requireNonNull(name, "Player name cannot be null");
+        this.wins = 0;
+        this.losses = 0;
+        this.draws = 0;
 
         if (name.isBlank()) {
             throw new IllegalArgumentException("Player name cannot be blank");
@@ -23,4 +29,30 @@ public class Player {
     public String getName() {
         return name;
     }
+
+    public int getWins() {
+        return wins;
+    }
+
+    public int getLosses() {
+        return losses;
+    }
+
+    public int getDraws() {
+        return draws;
+    }
+
+
+    public void recordWin() {
+        this.wins++;
+    }
+
+    public void recordLoss() {
+        this.losses++;
+    }
+
+    public void recordDraw() {
+        this.draws++;
+    }
+
 }
