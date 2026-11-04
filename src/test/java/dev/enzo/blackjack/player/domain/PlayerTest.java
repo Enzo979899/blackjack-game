@@ -35,4 +35,51 @@ class PlayerTest {
         assertThrows(IllegalArgumentException.class, () -> new Player(playerId, "   "));
     }
 
+    @Test
+    void shouldRecordWin() {
+        Player player = new Player(UUID.randomUUID(), "Enzo");
+
+        player.recordWin();
+
+        assertEquals(1, player.getWins());
+        assertEquals(0, player.getLosses());
+        assertEquals(0, player.getDraws());
+    }
+
+    @Test
+    void shouldRecordLoss() {
+        Player player = new Player(UUID.randomUUID(), "Enzo");
+
+        player.recordLoss();
+
+        assertEquals(0, player.getWins());
+        assertEquals(1, player.getLosses());
+        assertEquals(0, player.getDraws());
+    }
+
+    @Test
+    void shouldRecordDraw() {
+        Player player = new Player(UUID.randomUUID(), "Enzo");
+
+        player.recordDraw();
+
+        assertEquals(0, player.getWins());
+        assertEquals(0, player.getLosses());
+        assertEquals(1, player.getDraws());
+    }
+
+    @Test
+    void shouldAccumulateRoundResults() {
+        Player player = new Player(UUID.randomUUID(), "Enzo");
+
+        player.recordWin();
+        player.recordWin();
+        player.recordLoss();
+        player.recordDraw();
+
+        assertEquals(2, player.getWins());
+        assertEquals(1, player.getLosses());
+        assertEquals(1, player.getDraws());
+    }
+
 }
