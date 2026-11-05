@@ -3,6 +3,7 @@ package dev.enzo.blackjack.player.infrastructure.fake;
 import dev.enzo.blackjack.player.domain.model.Player;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,5 +47,43 @@ class InMemoryPlayerRepositoryTest {
 
         assertSame(firstPlayer, repository.findById(firstPlayerId).orElseThrow());
         assertSame(secondPlayer, repository.findById(secondPlayerId).orElseThrow());
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoPlayersExist() {
+        InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
+
+        List<Player> players = repository.findAll();
+
+        assertTrue(players.isEmpty());
+    }
+
+    @Test
+    void shouldReturnAllSavedPlayers() {
+        InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
+        Player enzo = new Player(UUID.randomUUID(), "Enzo");
+        Player carla = new Player(UUID.randomUUID(), "Carla");
+
+        repository.save(enzo);
+        repository.save(carla);
+
+        List<Player> players = repository.findAll();
+
+        assertEquals(2, players.size());
+        assertTrue(players.contains(enzo));
+        assertTrue(players.contains(carla));
+    }
+
+    @Test
+    void shouldReturnUnmodifiableList() {
+        InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
+        Player enzo = new Player(UUID.randomUUID(), "Enzo");
+
+        repository.save(enzo);
+
+        List<Player> players = repository.findAll();
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> players.add(new Player(UUID.randomUUID(), "Carla")));
     }
 }

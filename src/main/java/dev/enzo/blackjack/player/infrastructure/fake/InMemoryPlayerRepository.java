@@ -3,6 +3,7 @@ package dev.enzo.blackjack.player.infrastructure.fake;
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import dev.enzo.blackjack.player.domain.model.Player;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +21,11 @@ public class InMemoryPlayerRepository implements PlayerRepository {
     @Override
     public Optional<Player> findById(UUID playerId) {
         return Optional.ofNullable(players.get(playerId));
+    }
+
+    @Override
+    public List<Player> findAll() {
+        return List.copyOf(players.values());
     }
 
 }
