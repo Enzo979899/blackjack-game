@@ -73,6 +73,10 @@ public class Round {
         return result;
     }
 
+    public List<Card> getRemainingCards() {
+        return deck.getCards();
+    }
+
     public void start() {
         if (this.status != RoundStatus.WAITING_TO_START) {
             throw new IllegalStateException("Round is already started!");

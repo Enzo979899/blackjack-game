@@ -522,4 +522,24 @@ class RoundTest {
 
     }
 
+    @Test
+    void shouldReturnRemainingCardsWithoutAllowingModification() {
+        Card firstCard = new Card(Suit.HEARTS, Rank.AS);
+        Card secondCard = new Card(Suit.SPADES, Rank.KING);
+
+        Deck deck = new Deck(List.of(firstCard, secondCard));
+
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
+
+        List<Card> remainingCards = round.getRemainingCards();
+
+        assertEquals(2, remainingCards.size());
+        assertSame(firstCard, remainingCards.get(0));
+        assertSame(secondCard, remainingCards.get(1));
+
+        assertThrows(UnsupportedOperationException.class, () -> remainingCards.clear());
+
+        assertEquals(2, round.getRemainingCards().size());
+    }
+
 }
