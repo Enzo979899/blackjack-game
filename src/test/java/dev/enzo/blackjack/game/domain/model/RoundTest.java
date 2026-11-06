@@ -3,6 +3,7 @@ package dev.enzo.blackjack.game.domain.model;
 import org.junit.jupiter.api.Test;
 import org.mockito.configuration.IMockitoConfiguration;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -451,6 +452,94 @@ class RoundTest {
 
         assertThrows(NullPointerException.class, () -> new Round(null, playerId, deck));
         assertThrows(NullPointerException.class, () -> new Round(roundId, null, deck));
+    }
+
+    @Test
+    void shouldRestoreRoundWithExistingState() {
+        UUID roundId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+
+        List<Card> playerCards = List.of(new Card(Suit.HEARTS, Rank.AS), new Card(Suit.SPADES, Rank.KING));
+
+        List<Card> dealerCards = List.of(new Card(Suit.CLUBS, Rank.NINE));
+
+        Deck remainingDeck = new Deck(List.of(new Card(Suit.DIAMONDS, Rank.FIVE)));
+
+        Round round = Round.restore(roundId, playerId, playerCards, dealerCards, remainingDeck, RoundStatus.PLAYER_TURN,
+                null);
+
+        assertEquals(roundId, round.getRoundId());
+        assertEquals(playerId, round.getPlayerId());
+        assertEquals(RoundStatus.PLAYER_TURN, round.getStatus());
+        assertNull(round.getResult());
+        assertEquals(2, round.getPlayerHand().getCards().size());
+        assertEquals(1, round.getDealerHand().getCards().size());
+    }
+
+    @Test
+    void shouldContinuePlayingWithRemainingDeckAfterRestore() {
+        UUID roundId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+        List<Card> playerCards = List.of(new Card(Suit.HEARTS, Rank.TEN), new Card(Suit.SPADES, Rank.SIX));
+        List<Card> dealerCards = List.of(new Card(Suit.CLUBS, Rank.NINE), new Card(Suit.DIAMONDS, Rank.SEVEN));
+        List<Card> remainingCards = List.of(new Card(Suit.HEARTS, Rank.THREE), new Card(Suit.SPADES, Rank.FIVE));
+        Round round = Round.restore(roundId, playerId, playerCards, dealerCards, new Deck(remainingCards),
+                RoundStatus.PLAYER_TURN, null);
+
+        round.hit();
+
+        assertEquals(RoundStatus.PLAYER_TURN, round.getStatus());
+        assertEquals(3, round.getPlayerHand().getCards().size());
+        assertEquals(19, round.getPlayerHand().calculateScore());
+
+        Card drawnCard = round.getPlayerHand().getCards().get(2);
+
+        assertEquals(Suit.HEARTS, drawnCard.getSuit());
+        assertEquals(Rank.THREE, drawnCard.getRank());
+    }
+
+    @Test
+    void shouldRejectFinishedRoundWithoutResult() {
+        UUID roundId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> Round.restore(roundId, playerId, List.of(new Card(Suit.HEARTS, Rank.TEN),
+                        new Card(Suit.SPADES, Rank.EIGHT)), List.of(new Card(Suit.CLUBS, Rank.NINE),
+                        new Card(Suit.DIAMONDS, Rank.SEVEN)), new Deck(List.of()), RoundStatus.FINISHED, null));
+    }
+
+    @Test
+    void shouldRejectUnfinishedRoundWithResult() {
+        UUID roundId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class, () ->
+                Round.restore(roundId, playerId, List.of(new Card(Suit.HEARTS, Rank.TEN),
+                                new Card(Suit.SPADES, Rank.SIX)),
+                        List.of(new Card(Suit.CLUBS, Rank.NINE), new Card(Suit.DIAMONDS, Rank.SEVEN)),
+                        new Deck(List.of()), RoundStatus.PLAYER_TURN, RoundResult.PLAYER_WIN));
+
+    }
+
+    @Test
+    void shouldReturnRemainingCardsWithoutAllowingModification() {
+        Card firstCard = new Card(Suit.HEARTS, Rank.AS);
+        Card secondCard = new Card(Suit.SPADES, Rank.KING);
+
+        Deck deck = new Deck(List.of(firstCard, secondCard));
+
+        Round round = new Round(UUID.randomUUID(), UUID.randomUUID(), deck);
+
+        List<Card> remainingCards = round.getRemainingCards();
+
+        assertEquals(2, remainingCards.size());
+        assertSame(firstCard, remainingCards.get(0));
+        assertSame(secondCard, remainingCards.get(1));
+
+        assertThrows(UnsupportedOperationException.class, () -> remainingCards.clear());
+
+        assertEquals(2, round.getRemainingCards().size());
     }
 
 }
