@@ -3,6 +3,7 @@ package dev.enzo.blackjack.game.domain.model;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class Deck {
     private final List<Card> cards;
@@ -15,6 +16,16 @@ public class Deck {
                 cards.add(new Card(suit, rank));
             }
         }
+    }
+
+    public Deck(List<Card> remainingCards) {
+        Objects.requireNonNull(remainingCards, "Cards cannot be null");
+
+        if (remainingCards.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Cards cannot contain null");
+        }
+
+        this.cards = new ArrayList<>(remainingCards);
     }
 
     public int getRemainingCards() {
@@ -30,5 +41,9 @@ public class Deck {
 
     public void shuffle() {
         Collections.shuffle(cards);
+    }
+
+    public List<Card> getCards() {
+        return List.copyOf(cards);
     }
 }

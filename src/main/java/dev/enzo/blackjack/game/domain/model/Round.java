@@ -1,6 +1,7 @@
 package dev.enzo.blackjack.game.domain.model;
 
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -22,6 +23,30 @@ public class Round {
         this.status = RoundStatus.WAITING_TO_START;
         this.result = null;
 
+    }
+
+    private Round(UUID roundId, UUID playerId, List<Card> playerCards, List<Card> dealerCards, Deck deck,
+                  RoundStatus status, RoundResult result) {
+        this.roundId = Objects.requireNonNull(roundId);
+        this.playerId = Objects.requireNonNull(playerId);
+        this.playerHand = new Hand(Objects.requireNonNull(playerCards));
+        this.dealerHand = new Hand(Objects.requireNonNull(dealerCards));
+        this.deck = Objects.requireNonNull(deck);
+        this.status = Objects.requireNonNull(status);
+        this.result = result;
+    }
+
+    public static Round restore(UUID roundId, UUID playerId, List<Card> playerCards, List<Card> dealerCards, Deck deck,
+                                RoundStatus status, RoundResult result) {
+
+        if (status == RoundStatus.FINISHED && result == null) {
+            throw new IllegalArgumentException("A finished round must have a result");
+        }
+
+        if (status != null && status != RoundStatus.FINISHED && result != null) {
+            throw new IllegalArgumentException("An unfinished round cannot have a result");
+        }
+        return new Round(roundId, playerId, playerCards, dealerCards, deck, status, result);
     }
 
     public UUID getPlayerId() {
