@@ -6,6 +6,9 @@ import dev.enzo.blackjack.player.domain.model.Player;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -15,21 +18,22 @@ class CreatePlayerServiceTest {
     @Test
     void shouldCreateAndSavePlayer() {
         PlayerRepository repository = mock(PlayerRepository.class);
+        when(repository.save(any(Player.class))).thenReturn(Mono.empty());
         CreatePlayerService service = new CreatePlayerService(repository);
 
-        CreatePlayerResult result = service.createPlayer("Enzo");
+        StepVerifier.create(service.createPlayer("Enzo")).assertNext(result -> {
+            assertNotNull(result.playerId());
+            assertEquals("Enzo", result.name());
 
-        assertNotNull(result.playerId());
-        assertEquals("Enzo", result.name());
+            ArgumentCaptor<Player> captor = ArgumentCaptor.forClass(Player.class);
 
-        ArgumentCaptor<Player> playerCaptor = ArgumentCaptor.forClass(Player.class);
+            verify(repository).save(captor.capture());
 
-        verify(repository).save(playerCaptor.capture());
+            Player savedPlayer = captor.getValue();
 
-        Player savedPlayer = playerCaptor.getValue();
-
-        assertEquals(result.playerId(), savedPlayer.getId());
-        assertEquals(result.name(), savedPlayer.getName());
+            assertEquals(result.playerId(), savedPlayer.getId());
+            assertEquals(result.name(), savedPlayer.getName());
+        }).verifyComplete();
     }
 
     @Test
@@ -37,7 +41,7 @@ class CreatePlayerServiceTest {
         PlayerRepository repository = mock(PlayerRepository.class);
         CreatePlayerService service = new CreatePlayerService(repository);
 
-        assertThrows(NullPointerException.class, () -> service.createPlayer(null));
+        StepVerifier.create(service.createPlayer(null)).expectError(NullPointerException.class).verify();
         verify(repository, never()).save(any(Player.class));
     }
 
@@ -46,23 +50,38 @@ class CreatePlayerServiceTest {
         PlayerRepository repository = mock(PlayerRepository.class);
         CreatePlayerService service = new CreatePlayerService(repository);
 
-        assertThrows(IllegalArgumentException.class, () -> service.createPlayer(""));
-        assertThrows(IllegalArgumentException.class, () -> service.createPlayer("   "));
+        StepVerifier.create(service.createPlayer("")).expectError(IllegalArgumentException.class).verify();
+
+        StepVerifier.create(service.createPlayer("   ")).expectError(IllegalArgumentException.class).verify();
         verify(repository, never()).save(any(Player.class));
     }
-
 
     @Test
     void shouldGenerateDifferentIdsForDifferentPlayers() {
         PlayerRepository repository = mock(PlayerRepository.class);
+
+        when(repository.save(any(Player.class)))
+                .thenReturn(Mono.empty());
+
         CreatePlayerService service = new CreatePlayerService(repository);
 
-        CreatePlayerResult firstPlayer = service.createPlayer("Enzo");
-        CreatePlayerResult secondPlayer = service.createPlayer("Carla");
+        Flux<CreatePlayerResult> players = Flux.concat(service.createPlayer("Enzo"),
+                service.createPlayer("Carla"));
 
-        assertNotEquals(firstPlayer.playerId(), secondPlayer.playerId());
-        assertEquals("Enzo", firstPlayer.name());
-        assertEquals("Carla", secondPlayer.name());
+        StepVerifier.create(players).recordWith(java.util.ArrayList::new).expectNextCount(2)
+                .consumeRecordedWith(results -> {
+                    var iterator = results.iterator();
+                    CreatePlayerResult firstPlayer = iterator.next();
+                    CreatePlayerResult secondPlayer = iterator.next();
+
+                    assertNotNull(firstPlayer.playerId());
+                    assertNotNull(secondPlayer.playerId());
+
+                    assertNotEquals(firstPlayer.playerId(), secondPlayer.playerId());
+                    assertEquals("Enzo", firstPlayer.name());
+                    assertEquals("Carla", secondPlayer.name());
+                }).verifyComplete();
+
         verify(repository, times(2)).save(any(Player.class));
     }
 

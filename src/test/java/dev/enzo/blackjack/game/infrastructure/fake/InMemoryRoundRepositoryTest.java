@@ -3,6 +3,7 @@ package dev.enzo.blackjack.game.infrastructure.fake;
 import dev.enzo.blackjack.game.domain.model.Deck;
 import dev.enzo.blackjack.game.domain.model.Round;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -17,11 +18,11 @@ class InMemoryRoundRepositoryTest {
         UUID roundId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
         Round round = new Round(roundId, playerId, new Deck());
-        repository.save(round);
-        Optional<Round> result = repository.findById(roundId);
 
-        assertTrue(result.isPresent());
-        assertSame(round, result.get());
+        StepVerifier.create(repository.save(round)).verifyComplete();
+
+        StepVerifier.create(repository.findById(roundId)).assertNext(savedRound -> assertSame(round, savedRound))
+                .verifyComplete();
     }
 
     @Test
@@ -29,9 +30,7 @@ class InMemoryRoundRepositoryTest {
         InMemoryRoundRepository repository = new InMemoryRoundRepository();
         UUID roundId = UUID.randomUUID();
 
-        Optional<Round> result = repository.findById(roundId);
-
-        assertTrue(result.isEmpty());
+        StepVerifier.create(repository.findById(roundId)).verifyComplete();
     }
 
     @Test
@@ -43,11 +42,15 @@ class InMemoryRoundRepositoryTest {
         Round firstRound = new Round(firstRoundId, playerId, new Deck());
         Round secondRound = new Round(secondRoundId, playerId, new Deck());
 
-        repository.save(firstRound);
-        repository.save(secondRound);
+        StepVerifier.create(repository.save(firstRound)).verifyComplete();
 
-        assertSame(firstRound, repository.findById(firstRoundId).orElseThrow());
-        assertSame(secondRound, repository.findById(secondRoundId).orElseThrow());
+        StepVerifier.create(repository.save(secondRound)).verifyComplete();
+
+        StepVerifier.create(repository.findById(firstRoundId))
+                .assertNext(savedRound -> assertSame(firstRound, savedRound)).verifyComplete();
+
+        StepVerifier.create(repository.findById(secondRoundId))
+                .assertNext(savedRound -> assertSame(secondRound, savedRound)).verifyComplete();
     }
 
     @Test
@@ -58,10 +61,12 @@ class InMemoryRoundRepositoryTest {
         Round originalRound = new Round(roundId, playerId, new Deck());
         Round updatedRound = new Round(roundId, playerId, new Deck());
 
-        repository.save(originalRound);
-        repository.save(updatedRound);
+        StepVerifier.create(repository.save(originalRound)).verifyComplete();
 
-        assertSame(updatedRound, repository.findById(roundId).orElseThrow());
+        StepVerifier.create(repository.save(updatedRound)).verifyComplete();
+
+        StepVerifier.create(repository.findById(roundId))
+                .assertNext(savedRound -> assertSame(updatedRound, savedRound)).verifyComplete();
     }
 
 }

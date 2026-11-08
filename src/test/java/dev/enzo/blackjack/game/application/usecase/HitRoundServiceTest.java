@@ -11,13 +11,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import java.util.Optional;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class HitRoundServiceTest {
+
     private RoundRepository repository;
     private RoundEventPublisher eventPublisher;
     private HitRoundService service;
@@ -34,11 +38,11 @@ class HitRoundServiceTest {
         Round round = mock(Round.class);
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
-
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
+        when(repository.save(round)).thenReturn(Mono.empty());
         when(round.getStatus()).thenReturn(RoundStatus.PLAYER_TURN);
 
-        service.hit(roundId);
+        StepVerifier.create(service.hit(roundId)).verifyComplete();
 
         var inOrder = inOrder(repository, round);
 
@@ -52,9 +56,9 @@ class HitRoundServiceTest {
     void shouldRejectNonExistingRound() {
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.empty());
+        when(repository.findById(roundId)).thenReturn(Mono.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> service.hit(roundId));
+        StepVerifier.create(service.hit(roundId)).expectError(IllegalArgumentException.class).verify();
         verify(repository).findById(roundId);
         verify(repository, never()).save(any(Round.class));
         verifyNoInteractions(eventPublisher);
@@ -62,7 +66,7 @@ class HitRoundServiceTest {
 
     @Test
     void shouldRejectNullRoundId() {
-        assertThrows(NullPointerException.class, () -> service.hit(null));
+        StepVerifier.create(service.hit(null)).expectError(NullPointerException.class).verify();
 
         verifyNoInteractions(repository, eventPublisher);
     }
@@ -72,10 +76,9 @@ class HitRoundServiceTest {
         Round round = mock(Round.class);
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
         doThrow(new IllegalStateException("Round already finished")).when(round).hit();
-
-        assertThrows(IllegalStateException.class, () -> service.hit(roundId));
+        StepVerifier.create(service.hit(roundId)).expectError(IllegalStateException.class).verify();
         verify(round).hit();
         verify(repository, never()).save(any(Round.class));
         verifyNoInteractions(eventPublisher);
@@ -94,13 +97,15 @@ class HitRoundServiceTest {
         UUID roundId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
+        when(repository.save(round)).thenReturn(Mono.empty());
+        when(eventPublisher.publish(any(RoundFinishedEvent.class))).thenReturn(Mono.empty());
         when(round.getStatus()).thenReturn(RoundStatus.FINISHED);
         when(round.getRoundId()).thenReturn(roundId);
         when(round.getPlayerId()).thenReturn(playerId);
         when(round.getResult()).thenReturn(RoundResult.DEALER_WIN);
 
-        service.hit(roundId);
+        StepVerifier.create(service.hit(roundId)).verifyComplete();
 
         ArgumentCaptor<RoundFinishedEvent> captor = ArgumentCaptor.forClass(RoundFinishedEvent.class);
 
@@ -121,10 +126,11 @@ class HitRoundServiceTest {
         Round round = mock(Round.class);
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
+        when(repository.save(round)).thenReturn(Mono.empty());
         when(round.getStatus()).thenReturn(RoundStatus.PLAYER_TURN);
 
-        service.hit(roundId);
+        StepVerifier.create(service.hit(roundId)).verifyComplete();
 
         verify(round).hit();
         verify(repository).save(round);

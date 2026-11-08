@@ -4,6 +4,7 @@ import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import dev.enzo.blackjack.player.domain.model.Player;
 import dev.enzo.blackjack.ranking.application.dto.RankingEntry;
 import dev.enzo.blackjack.ranking.application.port.out.RankingRepository;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,8 +17,8 @@ public class InMemoryRankingRepository implements RankingRepository {
     }
 
     @Override
-    public List<RankingEntry> findAll() {
-        return playerRepository.findAll().stream().map(this::toRankingEntry).toList();
+    public Flux<RankingEntry> findAll() {
+        return playerRepository.findAll().map(this::toRankingEntry);
     }
 
     private RankingEntry toRankingEntry(Player player) {

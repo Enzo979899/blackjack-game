@@ -4,6 +4,7 @@ import dev.enzo.blackjack.game.domain.model.RoundResult;
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import dev.enzo.blackjack.player.application.port.out.RoundResultRepository;
 import dev.enzo.blackjack.player.domain.model.Player;
+import reactor.core.publisher.Mono;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -19,28 +20,36 @@ public class InMemoryRoundResultRepository implements RoundResultRepository {
     }
 
     @Override
-    public synchronized boolean recordIfAbsent(UUID roundId, UUID playerId, RoundResult result) {
-        Objects.requireNonNull(roundId, "Round ID cannot be null");
-        Objects.requireNonNull(playerId, "Player ID cannot be null");
-        Objects.requireNonNull(result, "Round result cannot be null");
+    public Mono<Boolean> recordIfAbsent(UUID roundId, UUID playerId, RoundResult result) {
 
-        if (processedRoundIds.contains(roundId)) {
-            return false;
-        }
+        return Mono.defer(() -> {
+            Objects.requireNonNull(roundId, "Round ID cannot be null");
+            Objects.requireNonNull(playerId, "Player ID cannot be null");
+            Objects.requireNonNull(result, "Round result cannot be null");
 
-        Player player = playerRepository.findById(playerId).orElseThrow(() ->
-                new IllegalArgumentException("Player not found: " + playerId));
+            synchronized (processedRoundIds) {
+                if (!processedRoundIds.add(roundId)) {
+                    return Mono.just(false);
+                }
+            }
 
-        switch (result) {
-            case PLAYER_WIN -> player.recordWin();
-            case DEALER_WIN -> player.recordLoss();
-            case PUSH -> player.recordDraw();
-        }
+            return playerRepository.findById(playerId)
+                    .switchIfEmpty(Mono.error(new IllegalArgumentException("Player not found: " + playerId)))
+                    .flatMap(player -> {
+                        switch (result) {
+                            case PLAYER_WIN -> player.recordWin();
+                            case DEALER_WIN -> player.recordLoss();
+                            case PUSH -> player.recordDraw();
+                        }
 
-        playerRepository.save(player);
-        processedRoundIds.add(roundId);
-
-        return true;
+                        return playerRepository.save(player)
+                                .thenReturn(true);
+                    }).doOnError(error -> {
+                        synchronized (processedRoundIds) {
+                            processedRoundIds.remove(roundId);
+                        }
+                    });
+        });
     }
 
 }

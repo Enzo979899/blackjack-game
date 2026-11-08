@@ -6,6 +6,8 @@ import dev.enzo.blackjack.ranking.application.port.out.RankingRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,11 +32,9 @@ class GetRankingServiceTest {
 
     @Test
     void shouldReturnEmptyRankingWhenNoPlayersExist() {
-        when(rankingRepository.findAll()).thenReturn(List.of());
+        when(rankingRepository.findAll()).thenReturn(Flux.empty());
 
-        List<RankingEntry> ranking = service.getRanking();
-
-        assertTrue(ranking.isEmpty());
+        StepVerifier.create(service.getRanking()).verifyComplete();
         verify(rankingRepository).findAll();
     }
 
@@ -44,11 +44,9 @@ class GetRankingServiceTest {
         RankingEntry carla = entry("Carla", 15, 3, 0);
         RankingEntry denise = entry("Denise", 10, 1, 2);
 
-        when(rankingRepository.findAll()).thenReturn(List.of(enzo, carla, denise));
+        when(rankingRepository.findAll()).thenReturn(Flux.just(enzo, carla, denise));
 
-        List<RankingEntry> ranking = service.getRanking();
-
-        assertEquals(List.of(carla, denise, enzo), ranking);
+        StepVerifier.create(service.getRanking()).expectNext(carla, denise, enzo).verifyComplete();
     }
 
     @Test
@@ -57,11 +55,9 @@ class GetRankingServiceTest {
         RankingEntry carla = entry("Carla", 10, 2, 1);
         RankingEntry denise = entry("Denise", 10, 8, 0);
 
-        when(rankingRepository.findAll()).thenReturn(List.of(enzo, denise, carla));
+        when(rankingRepository.findAll()).thenReturn(Flux.just(enzo, denise, carla));
 
-        List<RankingEntry> ranking = service.getRanking();
-
-        assertEquals(List.of(carla, enzo, denise), ranking);
+        StepVerifier.create(service.getRanking()).expectNext(carla, enzo, denise).verifyComplete();
     }
 
     @Test
@@ -70,24 +66,20 @@ class GetRankingServiceTest {
         RankingEntry carla = entry("Carla", 10, 3, 0);
         RankingEntry denise = entry("Denise", 10, 3, 1);
 
-        when(rankingRepository.findAll()).thenReturn(List.of(enzo, denise, carla));
+        when(rankingRepository.findAll()).thenReturn(Flux.just(enzo, denise, carla));
 
-        List<RankingEntry> ranking = service.getRanking();
-
-        assertEquals(List.of(carla, denise, enzo), ranking);
+        StepVerifier.create(service.getRanking()).expectNext(carla, denise, enzo).verifyComplete();
     }
 
     @Test
     void shouldSortNamesIgnoringCase() {
-        RankingEntry enzo = entry("Enzo", 5, 2, 0);
+        RankingEntry enzo = entry("enzo", 5, 2, 0);
         RankingEntry carla = entry("Carla", 5, 2, 0);
-        RankingEntry denise = entry("Denise", 5, 2, 0);
+        RankingEntry denise = entry("DENISE", 5, 2, 0);
 
-        when(rankingRepository.findAll()).thenReturn(List.of(enzo, denise, carla));
+        when(rankingRepository.findAll()).thenReturn(Flux.just(enzo, denise, carla));
 
-        List<RankingEntry> ranking = service.getRanking();
-
-        assertEquals(List.of(carla, denise, enzo), ranking);
+        StepVerifier.create(service.getRanking()).expectNext(carla, denise, enzo).verifyComplete();
     }
 
     @Test
@@ -95,14 +87,13 @@ class GetRankingServiceTest {
         RankingEntry enzo = entry("Enzo", 5, 2, 0);
         RankingEntry carla = entry("Carla", 10, 1, 0);
 
-        List<RankingEntry> original = new ArrayList<>(List.of(enzo, carla));
+        List<RankingEntry> original = List.of(enzo, carla);
 
-        when(rankingRepository.findAll()).thenReturn(original);
+        when(rankingRepository.findAll()).thenReturn(Flux.fromIterable(original));
 
-        List<RankingEntry> ranking = service.getRanking();
+        StepVerifier.create(service.getRanking()).expectNext(carla, enzo).verifyComplete();
 
         assertEquals(List.of(enzo, carla), original);
-        assertEquals(List.of(carla, enzo), ranking);
     }
 
     @Test
@@ -112,9 +103,9 @@ class GetRankingServiceTest {
 
     @Test
     void shouldCallRepositoryOnlyOnce() {
-        when(rankingRepository.findAll()).thenReturn(List.of());
+        when(rankingRepository.findAll()).thenReturn(Flux.empty());
 
-        service.getRanking();
+        StepVerifier.create(service.getRanking()).verifyComplete();
 
         verify(rankingRepository, times(1)).findAll();
         verifyNoMoreInteractions(rankingRepository);

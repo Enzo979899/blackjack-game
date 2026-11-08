@@ -6,6 +6,7 @@ import dev.enzo.blackjack.game.application.port.out.RoundRepository;
 import dev.enzo.blackjack.game.domain.event.RoundFinishedEvent;
 import dev.enzo.blackjack.game.domain.model.Round;
 import dev.enzo.blackjack.game.domain.model.RoundStatus;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -20,20 +21,26 @@ public class StandRoundService implements StandRoundUseCase {
     }
 
     @Override
-    public void stand(UUID roundId) {
-        Objects.requireNonNull(roundId, "Round ID cannot be null");
+    public Mono<Void> stand(UUID roundId) {
+        return Mono.defer(() -> {
+            Objects.requireNonNull(roundId, "Round ID cannot be null");
 
-        Round round = roundRepository.findById(roundId).orElseThrow(() ->
-                new IllegalArgumentException("Round not found: " + roundId));
+            return roundRepository.findById(roundId)
+                    .switchIfEmpty(Mono.error(new IllegalArgumentException("Round not found: " + roundId)))
+                    .flatMap(round -> {
+                        round.stand();
+                        round.playDealerTurn();
 
-        round.stand();
-        round.playDealerTurn();
+                        return roundRepository.save(round).then(Mono.defer(() -> {
+                            if (round.getStatus() == RoundStatus.FINISHED) {
+                                return eventPublisher.publish(new RoundFinishedEvent(round.getRoundId(),
+                                                round.getPlayerId(), round.getResult()));
+                            }
 
-        roundRepository.save(round);
-
-        if (round.getStatus() == RoundStatus.FINISHED) {
-            eventPublisher.publish(new RoundFinishedEvent(round.getRoundId(), round.getPlayerId(), round.getResult()));
-        }
+                            return Mono.empty();
+                        }));
+                    });
+        });
     }
 
 }

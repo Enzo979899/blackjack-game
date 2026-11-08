@@ -6,6 +6,7 @@ import dev.enzo.blackjack.player.domain.model.Player;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 import java.util.UUID;
 
@@ -24,15 +25,15 @@ class InMemoryRoundResultRepositoryTest {
         playerId = UUID.randomUUID();
         player = new Player(playerId, "Enzo");
 
-        playerRepository.save(player);
+        StepVerifier.create(playerRepository.save(player)).verifyComplete();
     }
 
     @Test
     void shouldRecordPlayerWin() {
         UUID roundId = UUID.randomUUID();
-        boolean recorded = resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN);
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN))
+                .expectNext(true).verifyComplete();
 
-        assertTrue(recorded);
         assertEquals(1, player.getWins());
         assertEquals(0, player.getLosses());
         assertEquals(0, player.getDraws());
@@ -41,9 +42,9 @@ class InMemoryRoundResultRepositoryTest {
     @Test
     void shouldRecordPlayerLoss() {
         UUID roundId = UUID.randomUUID();
-        boolean recorded = resultRepository.recordIfAbsent(roundId, playerId, RoundResult.DEALER_WIN);
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, playerId, RoundResult.DEALER_WIN))
+                .expectNext(true).verifyComplete();
 
-        assertTrue(recorded);
         assertEquals(0, player.getWins());
         assertEquals(1, player.getLosses());
         assertEquals(0, player.getDraws());
@@ -52,9 +53,9 @@ class InMemoryRoundResultRepositoryTest {
     @Test
     void shouldRecordPlayerDraw() {
         UUID roundId = UUID.randomUUID();
-        boolean recorded = resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PUSH);
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PUSH))
+                .expectNext(true).verifyComplete();
 
-        assertTrue(recorded);
         assertEquals(0, player.getWins());
         assertEquals(0, player.getLosses());
         assertEquals(1, player.getDraws());
@@ -63,11 +64,12 @@ class InMemoryRoundResultRepositoryTest {
     @Test
     void shouldNotRecordSameRoundTwice() {
         UUID roundId = UUID.randomUUID();
-        boolean firstResult = resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN);
-        boolean secondResult = resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN);
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN))
+                .expectNext(true).verifyComplete();
 
-        assertTrue(firstResult);
-        assertFalse(secondResult);
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN))
+                .expectNext(false).verifyComplete();
+
         assertEquals(1, player.getWins());
         assertEquals(0, player.getLosses());
         assertEquals(0, player.getDraws());
@@ -75,10 +77,17 @@ class InMemoryRoundResultRepositoryTest {
 
     @Test
     void shouldAccumulateResultsFromDifferentRounds() {
-        resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.PLAYER_WIN);
-        resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.PLAYER_WIN);
-        resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.DEALER_WIN);
-        resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.PUSH);
+        StepVerifier.create(resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.PLAYER_WIN))
+                .expectNext(true).verifyComplete();
+
+        StepVerifier.create(resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.PLAYER_WIN))
+                .expectNext(true).verifyComplete();
+
+        StepVerifier.create(resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.DEALER_WIN))
+                .expectNext(true).verifyComplete();
+
+        StepVerifier.create(resultRepository.recordIfAbsent(UUID.randomUUID(), playerId, RoundResult.PUSH))
+                .expectNext(true).verifyComplete();
 
         assertEquals(2, player.getWins());
         assertEquals(1, player.getLosses());
@@ -90,8 +99,9 @@ class InMemoryRoundResultRepositoryTest {
         UUID roundId = UUID.randomUUID();
         UUID unknownPlayerId = UUID.randomUUID();
 
-        assertThrows(IllegalArgumentException.class,
-                () -> resultRepository.recordIfAbsent(roundId, unknownPlayerId, RoundResult.PLAYER_WIN));
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, unknownPlayerId, RoundResult.PLAYER_WIN))
+                .expectError(IllegalArgumentException.class).verify();
+
         assertEquals(0, player.getWins());
     }
 
@@ -99,12 +109,14 @@ class InMemoryRoundResultRepositoryTest {
     void shouldRejectNullArguments() {
         UUID roundId = UUID.randomUUID();
 
-        assertThrows(NullPointerException.class,
-                () -> resultRepository.recordIfAbsent(null, playerId, RoundResult.PLAYER_WIN));
-        assertThrows(NullPointerException.class,
-                () -> resultRepository.recordIfAbsent(roundId, null, RoundResult.PLAYER_WIN));
-        assertThrows(NullPointerException.class,
-                () -> resultRepository.recordIfAbsent(roundId, playerId, null));
+        StepVerifier.create(resultRepository.recordIfAbsent(null, playerId, RoundResult.PLAYER_WIN))
+                .expectError(NullPointerException.class).verify();
+
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, null, RoundResult.PLAYER_WIN))
+                .expectError(NullPointerException.class).verify();
+
+        StepVerifier.create(resultRepository.recordIfAbsent(roundId, playerId, null))
+                .expectError(NullPointerException.class).verify();
     }
 
 }

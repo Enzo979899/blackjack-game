@@ -5,6 +5,8 @@ import dev.enzo.blackjack.game.domain.model.RoundResult;
 import dev.enzo.blackjack.player.application.port.in.RecordRoundResultUseCase;
 
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.UUID;
 
@@ -19,7 +21,8 @@ class InMemoryRoundEventPublisherTest {
         InMemoryRoundEventPublisher publisher = new InMemoryRoundEventPublisher(useCase);
         RoundFinishedEvent event = new RoundFinishedEvent(UUID.randomUUID(), UUID.randomUUID(), RoundResult.PLAYER_WIN);
 
-        publisher.publish(event);
+        when(useCase.recordResult(event)).thenReturn(Mono.empty());
+        StepVerifier.create(publisher.publish(event)).verifyComplete();
 
         verify(useCase, times(1)).recordResult(event);
     }
@@ -27,13 +30,18 @@ class InMemoryRoundEventPublisherTest {
     @Test
     void shouldForwardDifferentEvents() {
         RecordRoundResultUseCase useCase = mock(RecordRoundResultUseCase.class);
-        InMemoryRoundEventPublisher publisher = new InMemoryRoundEventPublisher(useCase);
-        UUID playerId = UUID.randomUUID();
-        RoundFinishedEvent firstEvent = new RoundFinishedEvent(UUID.randomUUID(), playerId, RoundResult.PLAYER_WIN);
-        RoundFinishedEvent secondEvent = new RoundFinishedEvent(UUID.randomUUID(), playerId, RoundResult.DEALER_WIN);
 
-        publisher.publish(firstEvent);
-        publisher.publish(secondEvent);
+        InMemoryRoundEventPublisher publisher = new InMemoryRoundEventPublisher(useCase);
+
+        UUID playerId = UUID.randomUUID();
+
+        RoundFinishedEvent firstEvent = new RoundFinishedEvent(UUID.randomUUID(), playerId, RoundResult.PLAYER_WIN);
+
+        RoundFinishedEvent secondEvent = new RoundFinishedEvent(UUID.randomUUID(), playerId, RoundResult.DEALER_WIN);
+        when(useCase.recordResult(firstEvent)).thenReturn(Mono.empty());
+        when(useCase.recordResult(secondEvent)).thenReturn(Mono.empty());
+        StepVerifier.create(publisher.publish(firstEvent)).verifyComplete();
+        StepVerifier.create(publisher.publish(secondEvent)).verifyComplete();
 
         var inOrder = inOrder(useCase);
 
@@ -53,10 +61,13 @@ class InMemoryRoundEventPublisherTest {
         InMemoryRoundEventPublisher publisher = new InMemoryRoundEventPublisher(useCase);
         RoundFinishedEvent event = new RoundFinishedEvent(UUID.randomUUID(), UUID.randomUUID(), RoundResult.PUSH);
 
-        doThrow(new IllegalStateException("Result processing failed")).when(useCase).recordResult(event);
+        when(useCase.recordResult(event)).thenReturn(Mono.error(new IllegalStateException("Result processing failed")));
 
-        assertThrows(IllegalStateException.class, () -> publisher.publish(event));
+        StepVerifier.create(publisher.publish(event)).expectErrorMatches(error ->
+                error instanceof IllegalStateException && "Result processing failed".equals(error.getMessage()))
+                .verify();
 
+        verify(useCase).recordResult(event);
     }
 
 }

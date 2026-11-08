@@ -6,6 +6,8 @@ import dev.enzo.blackjack.player.application.port.out.RoundResultRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.UUID;
 
@@ -29,9 +31,9 @@ class RecordRoundResultServiceTest {
 
         RoundFinishedEvent event = new RoundFinishedEvent(roundId, playerId, RoundResult.PLAYER_WIN);
 
-        when(repository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN)).thenReturn(true);
+        when(repository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN)).thenReturn(Mono.just(true));
 
-        service.recordResult(event);
+        StepVerifier.create(service.recordResult(event)).verifyComplete();
 
         verify(repository).recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN);
     }
@@ -43,9 +45,9 @@ class RecordRoundResultServiceTest {
 
         RoundFinishedEvent event = new RoundFinishedEvent(roundId, playerId, RoundResult.PLAYER_WIN);
 
-        when(repository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN)).thenReturn(false);
+        when(repository.recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN)).thenReturn(Mono.just(false));
 
-        assertDoesNotThrow(() -> service.recordResult(event));
+        StepVerifier.create(service.recordResult(event)).verifyComplete();
 
         verify(repository).recordIfAbsent(roundId, playerId, RoundResult.PLAYER_WIN);
     }
@@ -57,14 +59,15 @@ class RecordRoundResultServiceTest {
 
         RoundFinishedEvent event = new RoundFinishedEvent(roundId, playerId, RoundResult.PUSH);
 
-        service.recordResult(event);
+        when(repository.recordIfAbsent(roundId, playerId, RoundResult.PUSH)).thenReturn(Mono.just(true));
+        StepVerifier.create(service.recordResult(event)).verifyComplete();
 
         verify(repository).recordIfAbsent(roundId, playerId, RoundResult.PUSH);
     }
 
     @Test
     void shouldRejectNullEvent() {
-        assertThrows(NullPointerException.class, () -> service.recordResult(null));
+        StepVerifier.create(service.recordResult(null)).expectError(NullPointerException.class).verify();
 
         verifyNoInteractions(repository);
     }
@@ -76,9 +79,10 @@ class RecordRoundResultServiceTest {
 
         RoundFinishedEvent event = new RoundFinishedEvent(roundId, playerId, RoundResult.DEALER_WIN);
 
-        doThrow(new IllegalStateException("Database unavailable")).when(repository)
-                .recordIfAbsent(roundId, playerId, RoundResult.DEALER_WIN);
+        when(repository.recordIfAbsent(roundId, playerId, RoundResult.DEALER_WIN))
+                .thenReturn(Mono.error(new IllegalStateException("Database unavailable")));
 
-        assertThrows(IllegalStateException.class, () -> service.recordResult(event));
+        StepVerifier.create(service.recordResult(event)).expectErrorMatches(error ->
+                error instanceof IllegalStateException && error.getMessage().equals("Database unavailable")).verify();
     }
 }

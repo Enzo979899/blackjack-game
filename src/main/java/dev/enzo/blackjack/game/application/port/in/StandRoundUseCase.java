@@ -1,9 +1,11 @@
 package dev.enzo.blackjack.game.application.port.in;
 
+import reactor.core.publisher.Mono;
+
 import java.util.UUID;
 
 public interface StandRoundUseCase {
 
-    void stand(UUID roundId);
+    Mono<Void> stand(UUID roundId);
 
 }

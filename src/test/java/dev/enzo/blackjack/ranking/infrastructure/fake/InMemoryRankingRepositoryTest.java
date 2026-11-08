@@ -6,6 +6,7 @@ import dev.enzo.blackjack.ranking.application.dto.RankingEntry;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,9 +25,7 @@ class InMemoryRankingRepositoryTest {
 
     @Test
     void shouldReturnEmptyListWhenNoPlayersExist() {
-        List<RankingEntry> entries = rankingRepository.findAll();
-
-        assertTrue(entries.isEmpty());
+        StepVerifier.create(rankingRepository.findAll()).verifyComplete();
     }
 
     @Test
@@ -34,17 +33,14 @@ class InMemoryRankingRepositoryTest {
         UUID playerId = UUID.randomUUID();
         Player player = new Player(playerId, "Enzo");
 
-        playerRepository.save(player);
+        StepVerifier.create(playerRepository.save(player)).verifyComplete();
 
-        List<RankingEntry> entries = rankingRepository.findAll();
-
-        assertEquals(1, entries.size());
-
-        RankingEntry entry = entries.getFirst();
-
-        assertAll(() -> assertEquals(playerId, entry.playerId()),
-                () -> assertEquals("Enzo", entry.playerName()), () -> assertEquals(0, entry.wins()),
-                () -> assertEquals(0, entry.losses()), () -> assertEquals(0, entry.draws()));
+        StepVerifier.create(rankingRepository.findAll()).assertNext(entry -> assertAll(() ->
+                assertEquals(playerId, entry.playerId()), () ->
+                assertEquals("Enzo", entry.playerName()), () ->
+                assertEquals(0, entry.wins()), () ->
+                assertEquals(0, entry.losses()), () ->
+                assertEquals(0, entry.draws()))).verifyComplete();
     }
 
     @Test
@@ -52,50 +48,55 @@ class InMemoryRankingRepositoryTest {
         Player enzo = new Player(UUID.randomUUID(), "Enzo");
         Player carla = new Player(UUID.randomUUID(), "Carla");
 
-        playerRepository.save(enzo);
-        playerRepository.save(carla);
+        StepVerifier.create(playerRepository.save(enzo)).verifyComplete();
 
-        List<RankingEntry> entries = rankingRepository.findAll();
+        StepVerifier.create(playerRepository.save(carla)).verifyComplete();
 
-        assertEquals(2, entries.size());
-        assertTrue(entries.stream().anyMatch(entry -> entry.playerId().equals(enzo.getId())));
-        assertTrue(entries.stream().anyMatch(entry -> entry.playerId().equals(carla.getId())));
+        StepVerifier.create(rankingRepository.findAll().collectList()).assertNext(entries -> {
+            assertEquals(2, entries.size());
+            assertTrue(entries.stream().anyMatch(entry -> entry.playerId().equals(enzo.getId())));
+            assertTrue(entries.stream().anyMatch(entry -> entry.playerId().equals(carla.getId())));
+        }).verifyComplete();
     }
 
     @Test
     void shouldReflectUpdatedPlayerStatistics() {
         Player player = new Player(UUID.randomUUID(), "Enzo");
 
-        playerRepository.save(player);
+        StepVerifier.create(playerRepository.save(player)).verifyComplete();
 
         player.recordWin();
         player.recordWin();
         player.recordLoss();
         player.recordDraw();
 
-        playerRepository.save(player);
+        StepVerifier.create(playerRepository.save(player)).verifyComplete();
 
-        RankingEntry entry = rankingRepository.findAll().getFirst();
-
-        assertAll(() -> assertEquals(2, entry.wins()), () -> assertEquals(1, entry.losses()),
-                () -> assertEquals(1, entry.draws()));
+        StepVerifier.create(rankingRepository.findAll()).assertNext(entry -> assertAll(() ->
+                assertEquals(2, entry.wins()), () ->
+                assertEquals(1, entry.losses()), () ->
+                assertEquals(1, entry.draws()))).verifyComplete();
     }
 
     @Test
     void shouldReturnSnapshotOfPlayerStatistics() {
         Player player = new Player(UUID.randomUUID(), "Enzo");
 
-        playerRepository.save(player);
+        StepVerifier.create(playerRepository.save(player)).verifyComplete();
 
-        RankingEntry originalEntry = rankingRepository.findAll().getFirst();
+        RankingEntry[] originalEntry = new RankingEntry[1];
+
+        StepVerifier.create(rankingRepository.findAll()).assertNext(entry ->
+                originalEntry[0] = entry).verifyComplete();
 
         player.recordWin();
-        playerRepository.save(player);
 
-        RankingEntry updatedEntry = rankingRepository.findAll().getFirst();
+        StepVerifier.create(playerRepository.save(player)).verifyComplete();
 
-        assertEquals(0, originalEntry.wins());
-        assertEquals(1, updatedEntry.wins());
+        StepVerifier.create(rankingRepository.findAll()).assertNext(updatedEntry -> {
+            assertEquals(0, originalEntry[0].wins());
+            assertEquals(1, updatedEntry.wins());
+        }).verifyComplete();
     }
 
     @Test

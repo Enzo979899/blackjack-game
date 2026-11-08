@@ -4,6 +4,7 @@ import dev.enzo.blackjack.player.application.dto.CreatePlayerResult;
 import dev.enzo.blackjack.player.application.port.in.CreatePlayerUseCase;
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import dev.enzo.blackjack.player.domain.model.Player;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -16,14 +17,12 @@ public class CreatePlayerService implements CreatePlayerUseCase {
     }
 
     @Override
-    public CreatePlayerResult createPlayer(String name) {
-        UUID playerId = UUID.randomUUID();
+    public Mono<CreatePlayerResult> createPlayer(String name) {
+        return Mono.defer(() -> {
+            Player player = new Player(UUID.randomUUID(), name);
 
-        Player player = new Player(playerId, name);
-
-        playerRepository.save(player);
-
-        return new CreatePlayerResult(player.getId(), player.getName());
+            return playerRepository.save(player).thenReturn(new CreatePlayerResult(player.getId(), player.getName()));
+        });
     }
 
 }

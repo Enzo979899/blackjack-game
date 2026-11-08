@@ -11,6 +11,9 @@ import dev.enzo.blackjack.ranking.application.usecase.GetRankingService;
 import dev.enzo.blackjack.ranking.infrastructure.fake.InMemoryRankingRepository;
 
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,34 +31,55 @@ class RankingFlowIntegrationTest {
         RecordRoundResultService recordResultService = new RecordRoundResultService(resultRepository);
         GetRankingService getRankingService = new GetRankingService(rankingRepository);
 
-        UUID enzoId = createPlayerService.createPlayer("Enzo").playerId();
-        UUID carlaId = createPlayerService.createPlayer("Carla").playerId();
-        UUID deniseId = createPlayerService.createPlayer("Denise").playerId();
+        Mono<List<RankingEntry>> flow = createPlayerService.createPlayer("Enzo").flatMap(enzo ->
+                        createPlayerService.createPlayer("Carla").flatMap(carla ->
+                                        createPlayerService.createPlayer("Denise")
+                                                .flatMap(denise -> {
+                                                    UUID enzoId = enzo.playerId();
+                                                    UUID carlaId = carla.playerId();
+                                                    UUID deniseId = denise.playerId();
 
-        recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(), enzoId, RoundResult.PLAYER_WIN));
+                                                    return Flux.concat(recordResultService.recordResult(
+                                                            new RoundFinishedEvent(UUID.randomUUID(), enzoId,
+                                                                    RoundResult.PLAYER_WIN)),
+                                                                    recordResultService.recordResult(
+                                                                            new RoundFinishedEvent(UUID.randomUUID(),
+                                                                                    enzoId, RoundResult.PLAYER_WIN)),
+                                                                    recordResultService.recordResult(
+                                                                            new RoundFinishedEvent(UUID.randomUUID(),
+                                                                                    carlaId, RoundResult.PLAYER_WIN)),
+                                                                    recordResultService.recordResult(
+                                                                            new RoundFinishedEvent(UUID.randomUUID(),
+                                                                                    deniseId, RoundResult.PLAYER_WIN)),
+                                                                    recordResultService.recordResult(
+                                                                            new RoundFinishedEvent(UUID.randomUUID(),
+                                                                                    deniseId, RoundResult.DEALER_WIN)))
+                                                            .then(getRankingService.getRanking().collectList())
+                                                            .doOnNext(ranking -> {
 
-        recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(), enzoId, RoundResult.PLAYER_WIN));
+                                                                assertEquals(3, ranking.size());
+                                                                assertEquals(enzoId, ranking.get(0).playerId());
 
-        recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(), carlaId, RoundResult.PLAYER_WIN));
+                                                                assertEquals(carlaId, ranking.get(1).playerId());
+                                                                assertEquals(deniseId, ranking.get(2).playerId());
 
-        recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(), deniseId, RoundResult.PLAYER_WIN));
+                                                                assertAll(
+                                                                        () -> assertEquals(
+                                                                                2, ranking.getFirst().wins()),
+                                                                        () -> assertEquals(
+                                                                                0, ranking.getFirst().losses()),
+                                                                        () -> assertEquals(
+                                                                                1, ranking.get(1).wins()),
+                                                                        () -> assertEquals(
+                                                                                0, ranking.get(1).losses()),
+                                                                        () -> assertEquals(
+                                                                                1, ranking.get(2).wins()),
+                                                                        () -> assertEquals(
+                                                                                1, ranking.get(2).losses()));
+                                                            });
+                                                })));
 
-        recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(), deniseId, RoundResult.DEALER_WIN));
-
-        List<RankingEntry> ranking = getRankingService.getRanking();
-
-        assertEquals(3, ranking.size());
-
-        assertEquals(enzoId, ranking.get(0).playerId());
-        assertEquals(carlaId, ranking.get(1).playerId());
-        assertEquals(deniseId, ranking.get(2).playerId());
-
-        assertAll(() -> assertEquals(2, ranking.get(0).wins()),
-                () -> assertEquals(0, ranking.get(0).losses()),
-                () -> assertEquals(1, ranking.get(1).wins()),
-                () -> assertEquals(0, ranking.get(1).losses()),
-                () -> assertEquals(1, ranking.get(2).wins()),
-                () -> assertEquals(1, ranking.get(2).losses()));
+        StepVerifier.create(flow).expectNextCount(1).verifyComplete();
     }
 
     @Test
@@ -67,29 +91,39 @@ class RankingFlowIntegrationTest {
         RecordRoundResultService recordResultService = new RecordRoundResultService(resultRepository);
         GetRankingService getRankingService = new GetRankingService(rankingRepository);
 
-        UUID enzoId = createPlayerService.createPlayer("Enzo").playerId();
-        UUID carlaId = createPlayerService.createPlayer("Carla").playerId();
+        Mono<List<List<RankingEntry>>> flow = createPlayerService.createPlayer("Enzo")
+                .flatMap(enzo -> createPlayerService.createPlayer("Carla")
+                                .flatMap(carla -> {
+                                    UUID enzoId = enzo.playerId();
+                                    UUID carlaId = carla.playerId();
+                                    UUID roundId = UUID.randomUUID();
 
-        recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(), carlaId, RoundResult.PLAYER_WIN));
+                                    RoundFinishedEvent event = new RoundFinishedEvent(roundId, enzoId,
+                                            RoundResult.PLAYER_WIN);
 
-        UUID roundId = UUID.randomUUID();
+                                    return recordResultService.recordResult(new RoundFinishedEvent(UUID.randomUUID(),
+                                                            carlaId, RoundResult.PLAYER_WIN))
+                                            .then(recordResultService.recordResult(event))
+                                            .then(getRankingService.getRanking().collectList())
+                                            .flatMap(rankingBefore ->
+                                                            recordResultService.recordResult(event).then(
+                                                                    getRankingService.getRanking().collectList())
+                                                                    .map(rankingAfter ->
+                                                                            List.of(rankingBefore, rankingAfter)));
+                                }));
 
-        RoundFinishedEvent event = new RoundFinishedEvent(roundId, enzoId, RoundResult.PLAYER_WIN);
+        StepVerifier.create(flow).assertNext(rankings -> {
+            List<RankingEntry> rankingBefore = rankings.get(0);
+            List<RankingEntry> rankingAfter = rankings.get(1);
 
-        recordResultService.recordResult(event);
+            assertEquals(rankingBefore, rankingAfter);
 
-        List<RankingEntry> rankingBefore = getRankingService.getRanking();
+            assertEquals(1, rankingAfter.stream().filter(entry ->
+                                    entry.playerName().equals("Enzo")).findFirst().orElseThrow().wins());
 
-        recordResultService.recordResult(event);
-
-        List<RankingEntry> rankingAfter = getRankingService.getRanking();
-
-        assertEquals(rankingBefore, rankingAfter);
-        assertEquals(1, rankingAfter.stream().filter(entry -> entry.playerId().equals(enzoId))
-                .findFirst().orElseThrow().wins());
-
-        assertEquals(1, rankingAfter.stream().filter(entry -> entry.playerId().equals(carlaId))
-                .findFirst().orElseThrow().wins());
+                    assertEquals(1, rankingAfter.stream().filter(entry ->
+                                            entry.playerName().equals("Carla")).findFirst().orElseThrow().wins());
+        }).verifyComplete();
     }
 
 }
