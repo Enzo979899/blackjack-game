@@ -7,11 +7,11 @@ import org.springframework.data.relational.core.mapping.Table;
 public class PlayerEntity {
 
     @Id
-    private String id;
-    private String name;
-    private int wins;
-    private int losses;
-    private int draws;
+    private final String id;
+    private final String name;
+    private final int wins;
+    private final int losses;
+    private final int draws;
 
     public PlayerEntity(String id, String name, int wins, int losses, int draws) {
         this.id = id;

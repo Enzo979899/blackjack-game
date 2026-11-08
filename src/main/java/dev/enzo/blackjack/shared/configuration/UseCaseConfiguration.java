@@ -32,6 +32,7 @@ public class UseCaseConfiguration {
     }
 
     @Bean
+    @Profile("!mysql")
     public PlayerRepository playerRepository() {
         return new InMemoryPlayerRepository();
     }
@@ -47,6 +48,7 @@ public class UseCaseConfiguration {
     }
 
     @Bean
+    @Profile("!mysql")
     public RoundResultRepository roundResultRepository(PlayerRepository playerRepository) {
         return new InMemoryRoundResultRepository(playerRepository);
     }
