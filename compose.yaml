@@ -20,6 +20,7 @@ services:
       - "127.0.0.1:3307:3306"
     volumes:
       - blackjack-mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
 
 volumes:

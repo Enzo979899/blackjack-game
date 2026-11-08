@@ -18,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
 
 @SpringBootTest(properties = {
-        "spring.mongodb.uri=mongodb://localhost:27017/blackjack_test"
+        "spring.mongodb.uri=mongodb://localhost:27017/blackjack_test",
+        "spring.autoconfigure.exclude=org.springframework.boot.r2dbc.autoconfigure.R2dbcAutoConfiguration"
 })
 @ActiveProfiles("mongo")
 class MongoRoundRepositoryIntegrationTest {
