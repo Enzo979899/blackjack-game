@@ -16,6 +16,8 @@ import dev.enzo.blackjack.player.domain.model.Player;
 import dev.enzo.blackjack.player.infrastructure.fake.InMemoryPlayerRepository;
 import dev.enzo.blackjack.player.infrastructure.fake.InMemoryRoundResultRepository;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.UUID;
 
@@ -45,26 +47,29 @@ class RoundFlowIntegrationTest {
 
         StandRoundService standRoundService = new StandRoundService(roundRepository, eventPublisher);
 
-        UUID playerId = createPlayerService.createPlayer("Enzo").playerId();
+        StepVerifier.create(createPlayerService.createPlayer("Enzo").flatMap(createdPlayer -> {
+            UUID playerId = createdPlayer.playerId();
 
-        UUID roundId = startRoundService.startRound(playerId);
+            return startRoundService.startRound(playerId)
+                    .flatMap(roundId ->
+                                    standRoundService.stand(roundId).then(Mono.zip(roundRepository
+                                                            .findById(roundId),
+                                                    playerRepository.findById(playerId)))
+                                            .doOnNext(tuple -> {
+                                                var round = tuple.getT1();
+                                                var player = tuple.getT2();
 
-        standRoundService.stand(roundId);
+                                                assertEquals(RoundStatus.FINISHED, round.getStatus());
+                                                assertEquals(RoundResult.DEALER_WIN, round.getResult());
 
-        Round round = roundRepository.findById(roundId).orElseThrow();
-
-        assertEquals(RoundStatus.FINISHED, round.getStatus());
-        assertEquals(RoundResult.DEALER_WIN, round.getResult());
-
-        Player player = playerRepository.findById(playerId).orElseThrow();
-
-        assertEquals(0, player.getWins());
-        assertEquals(1, player.getLosses());
-        assertEquals(0, player.getDraws());
-
-        eventPublisher.publish(new RoundFinishedEvent(roundId, playerId, RoundResult.DEALER_WIN));
-
-        assertEquals(1, player.getLosses());
+                                                assertEquals(0, player.getWins());
+                                                assertEquals(1, player.getLosses());
+                                                assertEquals(0, player.getDraws());
+                                            }).then(eventPublisher.publish(new RoundFinishedEvent(roundId,
+                                                                    playerId, RoundResult.DEALER_WIN)))
+                                            .then(playerRepository.findById(playerId))
+                                            .doOnNext(player -> assertEquals(1, player.getLosses())));
+        })).expectNextCount(1).verifyComplete();
     }
 
     @Test
@@ -92,21 +97,26 @@ class RoundFlowIntegrationTest {
 
         StandRoundService standRoundService = new StandRoundService(roundRepository, eventPublisher);
 
-        UUID playerId = createPlayerService.createPlayer("Enzo").playerId();
+        StepVerifier.create(createPlayerService.createPlayer("Enzo").flatMap(createdPlayer -> {
+            UUID playerId = createdPlayer.playerId();
 
-        UUID roundId = startRoundService.startRound(playerId);
+            return startRoundService.startRound(playerId)
+                    .flatMap(roundId ->
+                                    standRoundService.stand(roundId)
+                                            .then(
+                                                    Mono.zip(roundRepository.findById(roundId),
+                                                            playerRepository.findById(playerId))));
+        })).assertNext(tuple -> {
+            var round = tuple.getT1();
+            var player = tuple.getT2();
 
-        standRoundService.stand(roundId);
+            assertEquals(RoundStatus.FINISHED, round.getStatus());
+            assertEquals(RoundResult.PLAYER_WIN, round.getResult());
 
-        Round round = roundRepository.findById(roundId).orElseThrow();
-        Player player = playerRepository.findById(playerId).orElseThrow();
-
-        assertEquals(RoundStatus.FINISHED, round.getStatus());
-        assertEquals(RoundResult.PLAYER_WIN, round.getResult());
-
-        assertEquals(1, player.getWins());
-        assertEquals(0, player.getLosses());
-        assertEquals(0, player.getDraws());
+            assertEquals(1, player.getWins());
+            assertEquals(0, player.getLosses());
+            assertEquals(0, player.getDraws());
+        }).verifyComplete();
     }
 
     @Test
@@ -134,21 +144,26 @@ class RoundFlowIntegrationTest {
 
         StandRoundService standRoundService = new StandRoundService(roundRepository, eventPublisher);
 
-        UUID playerId = createPlayerService.createPlayer("Enzo").playerId();
+        StepVerifier.create(createPlayerService.createPlayer("Enzo").flatMap(createdPlayer -> {
+            UUID playerId = createdPlayer.playerId();
 
-        UUID roundId = startRoundService.startRound(playerId);
+            return startRoundService.startRound(playerId)
+                    .flatMap(roundId ->
+                            standRoundService.stand(roundId)
+                                    .then(
+                                            Mono.zip(roundRepository.findById(roundId),
+                                                    playerRepository.findById(playerId))));
+        })).assertNext(tuple -> {
+            var round = tuple.getT1();
+            var player = tuple.getT2();
 
-        standRoundService.stand(roundId);
+            assertEquals(RoundStatus.FINISHED, round.getStatus());
+            assertEquals(RoundResult.PUSH, round.getResult());
 
-        Round round = roundRepository.findById(roundId).orElseThrow();
-        Player player = playerRepository.findById(playerId).orElseThrow();
-
-        assertEquals(RoundStatus.FINISHED, round.getStatus());
-        assertEquals(RoundResult.PUSH, round.getResult());
-
-        assertEquals(0, player.getWins());
-        assertEquals(0, player.getLosses());
-        assertEquals(1, player.getDraws());
+            assertEquals(0, player.getWins());
+            assertEquals(0, player.getLosses());
+            assertEquals(1, player.getDraws());
+        }).verifyComplete();
     }
 
 

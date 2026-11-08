@@ -2,6 +2,7 @@ package dev.enzo.blackjack.player.infrastructure.fake;
 
 import dev.enzo.blackjack.player.domain.model.Player;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,20 +18,18 @@ class InMemoryPlayerRepositoryTest {
         UUID playerId = UUID.randomUUID();
         Player player = new Player(playerId, "Carla");
 
-        repository.save(player);
-        Optional<Player> result = repository.findById(playerId);
+        StepVerifier.create(repository.save(player)).verifyComplete();
 
-        assertTrue(result.isPresent());
-        assertSame(player, result.get());
+        StepVerifier.create(repository.findById(playerId))
+                .assertNext(savedPlayer -> assertSame(player, savedPlayer)).verifyComplete();
     }
 
     @Test
     void shouldReturnEmptyWhenPlayerDoesNotExist() {
         InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
         UUID playerId = UUID.randomUUID();
-        Optional<Player> result = repository.findById(playerId);
 
-        assertTrue(result.isEmpty());
+        StepVerifier.create(repository.findById(playerId)).verifyComplete();
     }
 
     @Test
@@ -42,48 +41,52 @@ class InMemoryPlayerRepositoryTest {
         UUID secondPlayerId = UUID.randomUUID();
         Player secondPlayer = new Player(secondPlayerId, "Carla");
 
-        repository.save(firstPlayer);
-        repository.save(secondPlayer);
+        StepVerifier.create(repository.save(firstPlayer)).verifyComplete();
 
-        assertSame(firstPlayer, repository.findById(firstPlayerId).orElseThrow());
-        assertSame(secondPlayer, repository.findById(secondPlayerId).orElseThrow());
+        StepVerifier.create(repository.save(secondPlayer)).verifyComplete();
+
+        StepVerifier.create(repository.findById(firstPlayerId))
+                .assertNext(savedPlayer -> assertSame(firstPlayer, savedPlayer)).verifyComplete();
+
+        StepVerifier.create(repository.findById(secondPlayerId))
+                .assertNext(savedPlayer -> assertSame(secondPlayer, savedPlayer)).verifyComplete();
     }
 
     @Test
     void shouldReturnEmptyListWhenNoPlayersExist() {
         InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
 
-        List<Player> players = repository.findAll();
-
-        assertTrue(players.isEmpty());
+        StepVerifier.create(repository.findAll()).verifyComplete();
     }
 
     @Test
     void shouldReturnAllSavedPlayers() {
         InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
+
         Player enzo = new Player(UUID.randomUUID(), "Enzo");
         Player carla = new Player(UUID.randomUUID(), "Carla");
 
-        repository.save(enzo);
-        repository.save(carla);
+        StepVerifier.create(repository.save(enzo)).verifyComplete();
 
-        List<Player> players = repository.findAll();
+        StepVerifier.create(repository.save(carla)).verifyComplete();
 
-        assertEquals(2, players.size());
-        assertTrue(players.contains(enzo));
-        assertTrue(players.contains(carla));
+        StepVerifier.create(repository.findAll().collectList()).assertNext(players -> {
+            assertEquals(2, players.size());
+            assertTrue(players.contains(enzo));
+            assertTrue(players.contains(carla));
+        }).verifyComplete();
     }
 
     @Test
-    void shouldReturnUnmodifiableList() {
+    void shouldAllowCollectingPlayersIntoList() {
         InMemoryPlayerRepository repository = new InMemoryPlayerRepository();
         Player enzo = new Player(UUID.randomUUID(), "Enzo");
 
-        repository.save(enzo);
+        StepVerifier.create(repository.save(enzo)).verifyComplete();
 
-        List<Player> players = repository.findAll();
-
-        assertThrows(UnsupportedOperationException.class,
-                () -> players.add(new Player(UUID.randomUUID(), "Carla")));
+        StepVerifier.create(repository.findAll().collectList()).assertNext(players -> {
+            assertEquals(1, players.size());
+            assertSame(enzo, players.getFirst());
+        }).verifyComplete();
     }
 }

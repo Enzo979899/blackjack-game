@@ -9,6 +9,7 @@ import dev.enzo.blackjack.game.domain.model.Deck;
 import dev.enzo.blackjack.game.domain.model.Round;
 import dev.enzo.blackjack.game.domain.model.RoundStatus;
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -19,7 +20,6 @@ public class StartRoundService implements StartRoundUseCase {
     private final RoundEventPublisher eventPublisher;
     private final DeckFactory deckFactory;
 
-
     public StartRoundService(PlayerRepository playerRepository, RoundRepository roundRepository,
                              RoundEventPublisher eventPublisher, DeckFactory deckFactory) {
         this.playerRepository = Objects.requireNonNull(playerRepository);
@@ -28,27 +28,30 @@ public class StartRoundService implements StartRoundUseCase {
         this.deckFactory = Objects.requireNonNull(deckFactory);
     }
 
-
     @Override
-    public UUID startRound(UUID playerId) {
-        Objects.requireNonNull(playerId, "Player ID cannot be null");
+    public Mono<UUID> startRound(UUID playerId) {
+        return Mono.defer(() -> {
+            Objects.requireNonNull(playerId, "Player ID cannot be null");
 
-        if (playerRepository.findById(playerId).isEmpty()) {
-            throw new IllegalArgumentException("Player not found: " + playerId);
-        }
+            return playerRepository.findById(playerId)
+                    .switchIfEmpty(Mono.error(new IllegalArgumentException("Player not found: " + playerId)))
+                    .flatMap(player -> {
+                        UUID roundId = UUID.randomUUID();
+                        Round round = new Round(roundId, player.getId(), deckFactory.createDeck());
 
-        UUID roundId = UUID.randomUUID();
+                        round.start();
 
-        Round round = new Round(roundId, playerId, deckFactory.createDeck());
-        round.start();
+                        return roundRepository.save(round).then(Mono.defer(() -> {
+                            if (round.getStatus() == RoundStatus.FINISHED) {
+                                RoundFinishedEvent event = new RoundFinishedEvent(round.getRoundId(),
+                                        round.getPlayerId(), round.getResult());
 
-        roundRepository.save(round);
-
-        if (round.getStatus() == RoundStatus.FINISHED) {
-            eventPublisher.publish(new RoundFinishedEvent(round.getRoundId(), round.getPlayerId(), round.getResult()));
-        }
-
-        return roundId;
+                                        return eventPublisher.publish(event);
+                                    }
+                                    return Mono.empty();
+                                })).thenReturn(roundId);
+                    });
+        });
     }
 
 }

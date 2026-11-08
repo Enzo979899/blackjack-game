@@ -10,6 +10,8 @@ import dev.enzo.blackjack.game.domain.model.RoundStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -36,13 +38,15 @@ class StandRoundServiceTest {
         UUID roundId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
+        when(repository.save(round)).thenReturn(Mono.empty());
+        when(eventPublisher.publish(any(RoundFinishedEvent.class))).thenReturn(Mono.empty());
         when(round.getStatus()).thenReturn(RoundStatus.FINISHED);
         when(round.getRoundId()).thenReturn(roundId);
         when(round.getPlayerId()).thenReturn(playerId);
         when(round.getResult()).thenReturn(RoundResult.PLAYER_WIN);
 
-        service.stand(roundId);
+        StepVerifier.create(service.stand(roundId)).verifyComplete();
 
         var inOrder = inOrder(repository, round, eventPublisher);
 
@@ -57,9 +61,9 @@ class StandRoundServiceTest {
     void shouldRejectNonExistingRound() {
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.empty());
+        when(repository.findById(roundId)).thenReturn(Mono.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> service.stand(roundId));
+        StepVerifier.create(service.stand(roundId)).expectError(IllegalArgumentException.class).verify();
 
         verify(repository).findById(roundId);
         verify(repository, never()).save(any(Round.class));
@@ -68,7 +72,7 @@ class StandRoundServiceTest {
 
     @Test
     void shouldRejectNullRoundId() {
-        assertThrows(NullPointerException.class, () -> service.stand(null));
+        StepVerifier.create(service.stand(null)).expectError(NullPointerException.class).verify();
 
         verifyNoInteractions(repository, eventPublisher);
     }
@@ -78,11 +82,11 @@ class StandRoundServiceTest {
         Round round = mock(Round.class);
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
 
         doThrow(new IllegalStateException("Round already finished")).when(round).stand();
 
-        assertThrows(IllegalStateException.class, () -> service.stand(roundId));
+        StepVerifier.create(service.stand(roundId)).expectError(IllegalStateException.class).verify();
         verify(round).stand();
         verify(round, never()).playDealerTurn();
         verify(repository, never()).save(any(Round.class));
@@ -94,11 +98,11 @@ class StandRoundServiceTest {
         Round round = mock(Round.class);
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
 
         doThrow(new IllegalStateException("Dealer turn failed")).when(round).playDealerTurn();
 
-        assertThrows(IllegalStateException.class, () -> service.stand(roundId));
+        StepVerifier.create(service.stand(roundId)).expectError(IllegalStateException.class).verify();
         verify(round).stand();
         verify(round).playDealerTurn();
         verify(repository, never()).save(any(Round.class));
@@ -118,13 +122,15 @@ class StandRoundServiceTest {
         UUID roundId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
+        when(repository.save(round)).thenReturn(Mono.empty());
+        when(eventPublisher.publish(any(RoundFinishedEvent.class))).thenReturn(Mono.empty());
         when(round.getStatus()).thenReturn(RoundStatus.FINISHED);
         when(round.getRoundId()).thenReturn(roundId);
         when(round.getPlayerId()).thenReturn(playerId);
         when(round.getResult()).thenReturn(RoundResult.PLAYER_WIN);
 
-        service.stand(roundId);
+        StepVerifier.create(service.stand(roundId)).verifyComplete();
 
         ArgumentCaptor<RoundFinishedEvent> captor = ArgumentCaptor.forClass(RoundFinishedEvent.class);
 
@@ -146,10 +152,11 @@ class StandRoundServiceTest {
         Round round = mock(Round.class);
         UUID roundId = UUID.randomUUID();
 
-        when(repository.findById(roundId)).thenReturn(Optional.of(round));
+        when(repository.findById(roundId)).thenReturn(Mono.just(round));
+        when(repository.save(round)).thenReturn(Mono.empty());
         when(round.getStatus()).thenReturn(RoundStatus.DEALER_TURN);
 
-        service.stand(roundId);
+        StepVerifier.create(service.stand(roundId)).verifyComplete();
 
         verify(round).stand();
         verify(round).playDealerTurn();

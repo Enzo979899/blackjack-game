@@ -4,6 +4,7 @@ import dev.enzo.blackjack.game.application.port.out.RoundRepository;
 import dev.enzo.blackjack.game.domain.model.Round;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -18,13 +19,16 @@ public class MongoRoundRepositoryAdapter implements RoundRepository {
     }
 
     @Override
-    public void save(Round round) {
-        RoundDocument document = RoundDocumentMapper.toDocument(round);
-        springRepository.save(document);
+    public Mono<Void> save(Round round) {
+        return Mono.defer(() -> {
+            RoundDocument document = RoundDocumentMapper.toDocument(round);
+
+            return springRepository.save(document).then();
+        });
     }
 
     @Override
-    public Optional<Round> findById(UUID roundId) {
+    public Mono<Round> findById(UUID roundId) {
         return springRepository.findById(roundId.toString()).map(RoundDocumentMapper::toDomain);
     }
 }

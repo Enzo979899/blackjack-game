@@ -3,6 +3,8 @@ package dev.enzo.blackjack.game.infrastructure.persistence.mongo;
 import dev.enzo.blackjack.game.domain.model.*;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +25,10 @@ class MongoRoundRepositoryAdapterTest {
 
         Round round = new Round(roundId, playerId, new Deck());
 
-        adapter.save(round);
+        when(springRepository.save(any(RoundDocument.class))).thenAnswer(invocation ->
+                Mono.just(invocation.getArgument(0, RoundDocument.class)));
+
+        StepVerifier.create(adapter.save(round)).verifyComplete();
 
         ArgumentCaptor<RoundDocument> captor = ArgumentCaptor.forClass(RoundDocument.class);
 
@@ -44,17 +49,13 @@ class MongoRoundRepositoryAdapterTest {
                 List.of(new CardDocument(Suit.HEARTS, Rank.AS), new CardDocument(Suit.SPADES, Rank.KING)),
                 RoundStatus.WAITING_TO_START, null);
 
-        when(springRepository.findById(roundId.toString())).thenReturn(Optional.of(document));
+        when(springRepository.findById(roundId.toString())).thenReturn(Mono.just(document));
 
-        Optional<Round> result = adapter.findById(roundId);
-
-        assertTrue(result.isPresent());
-
-        Round restoredRound = result.orElseThrow();
-
-        assertEquals(roundId, restoredRound.getRoundId());
-        assertEquals(playerId, restoredRound.getPlayerId());
-        assertEquals(RoundStatus.WAITING_TO_START, restoredRound.getStatus());
+        StepVerifier.create(adapter.findById(roundId)).assertNext(restoredRound -> {
+            assertEquals(roundId, restoredRound.getRoundId());
+            assertEquals(playerId, restoredRound.getPlayerId());
+            assertEquals(RoundStatus.WAITING_TO_START, restoredRound.getStatus());
+        }).verifyComplete();
 
         verify(springRepository).findById(roundId.toString());
     }
@@ -63,11 +64,9 @@ class MongoRoundRepositoryAdapterTest {
     void shouldReturnEmptyWhenRoundDoesNotExist() {
         UUID roundId = UUID.randomUUID();
 
-        when(springRepository.findById(roundId.toString())).thenReturn(Optional.empty());
+        when(springRepository.findById(roundId.toString())).thenReturn(Mono.empty());
 
-        Optional<Round> result = adapter.findById(roundId);
-
-        assertTrue(result.isEmpty());
+        StepVerifier.create(adapter.findById(roundId)).verifyComplete();
 
         verify(springRepository).findById(roundId.toString());
     }

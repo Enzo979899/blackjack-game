@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,9 +32,8 @@ class MongoRoundRepositoryIntegrationTest {
 
     @AfterEach
     void cleanUp() {
-        for (UUID roundId : createdRoundIds) {
-            springRepository.deleteById(roundId.toString());
-        }
+        StepVerifier.create(Flux.fromIterable(createdRoundIds)
+                .concatMap(roundId -> springRepository.deleteById(roundId.toString()))).verifyComplete();
         createdRoundIds.clear();
     }
 
@@ -44,22 +45,22 @@ class MongoRoundRepositoryIntegrationTest {
         Round round = new Round(roundId, playerId, new Deck());
 
         createdRoundIds.add(roundId);
-        adapter.save(round);
+        StepVerifier.create(adapter.save(round)).verifyComplete();
 
-        Round restoredRound = adapter.findById(roundId).orElseThrow();
+        StepVerifier.create(adapter.findById(roundId)).assertNext(restoredRound -> {
+            assertEquals(roundId, restoredRound.getRoundId());
+            assertEquals(playerId, restoredRound.getPlayerId());
+            assertEquals(round.getStatus(), restoredRound.getStatus());
+            assertEquals(round.getRemainingCards().size(), restoredRound.getRemainingCards().size());
 
-        assertEquals(roundId, restoredRound.getRoundId());
-        assertEquals(playerId, restoredRound.getPlayerId());
-        assertEquals(round.getStatus(), restoredRound.getStatus());
-        assertEquals(round.getRemainingCards().size(), restoredRound.getRemainingCards().size());
+            for (int i = 0; i < round.getRemainingCards().size(); i++) {
+                Card originalCard = round.getRemainingCards().get(i);
+                Card restoredCard = restoredRound.getRemainingCards().get(i);
 
-        for (int i = 0; i < round.getRemainingCards().size(); i++) {
-            Card originalCard = round.getRemainingCards().get(i);
-            Card restoredCard = restoredRound.getRemainingCards().get(i);
-
-            assertEquals(originalCard.getSuit(), restoredCard.getSuit());
-            assertEquals(originalCard.getRank(), restoredCard.getRank());
-        }
+                assertEquals(originalCard.getSuit(), restoredCard.getSuit());
+                assertEquals(originalCard.getRank(), restoredCard.getRank());
+            }
+        }).verifyComplete();
     }
 
     @Test
@@ -68,31 +69,31 @@ class MongoRoundRepositoryIntegrationTest {
         UUID playerId = UUID.randomUUID();
 
         Round round = Round.restore(roundId, playerId, List.of(new Card(Suit.HEARTS, Rank.AS),
-                        new Card(Suit.SPADES, Rank.KING)), List.of(new Card(Suit.CLUBS, Rank.SEVEN),
-                        new Card(Suit.DIAMONDS, Rank.NINE)), new Deck(), RoundStatus.WAITING_TO_START, null);
+                new Card(Suit.SPADES, Rank.KING)), List.of(new Card(Suit.CLUBS, Rank.SEVEN),
+                new Card(Suit.DIAMONDS, Rank.NINE)), new Deck(), RoundStatus.WAITING_TO_START, null);
 
         createdRoundIds.add(roundId);
-        adapter.save(round);
+        StepVerifier.create(adapter.save(round)).verifyComplete();
 
-        Round restoredRound = adapter.findById(roundId).orElseThrow();
+        StepVerifier.create(adapter.findById(roundId)).assertNext(restoredRound -> {
+            assertEquals(2, restoredRound.getPlayerHand().getCards().size());
+            assertEquals(2, restoredRound.getDealerHand().getCards().size());
 
-        assertEquals(2, restoredRound.getPlayerHand().getCards().size());
-        assertEquals(2, restoredRound.getDealerHand().getCards().size());
+            List<Card> playerCards = restoredRound.getPlayerHand().getCards();
+            List<Card> dealerCards = restoredRound.getDealerHand().getCards();
 
-        List<Card> playerCards = restoredRound.getPlayerHand().getCards();
-        List<Card> dealerCards = restoredRound.getDealerHand().getCards();
+            assertEquals(Suit.HEARTS, playerCards.get(0).getSuit());
+            assertEquals(Rank.AS, playerCards.get(0).getRank());
 
-        assertEquals(Suit.HEARTS, playerCards.get(0).getSuit());
-        assertEquals(Rank.AS, playerCards.get(0).getRank());
+            assertEquals(Suit.SPADES, playerCards.get(1).getSuit());
+            assertEquals(Rank.KING, playerCards.get(1).getRank());
 
-        assertEquals(Suit.SPADES, playerCards.get(1).getSuit());
-        assertEquals(Rank.KING, playerCards.get(1).getRank());
+            assertEquals(Suit.CLUBS, dealerCards.get(0).getSuit());
+            assertEquals(Rank.SEVEN, dealerCards.get(0).getRank());
 
-        assertEquals(Suit.CLUBS, dealerCards.get(0).getSuit());
-        assertEquals(Rank.SEVEN, dealerCards.get(0).getRank());
-
-        assertEquals(Suit.DIAMONDS, dealerCards.get(1).getSuit());
-        assertEquals(Rank.NINE, dealerCards.get(1).getRank());
+            assertEquals(Suit.DIAMONDS, dealerCards.get(1).getSuit());
+            assertEquals(Rank.NINE, dealerCards.get(1).getRank());
+        }).verifyComplete();
     }
 
     @Test
@@ -105,20 +106,19 @@ class MongoRoundRepositoryIntegrationTest {
                 new Card(Suit.DIAMONDS, Rank.EIGHT)), new Deck(), RoundStatus.FINISHED, RoundResult.PLAYER_WIN);
 
         createdRoundIds.add(roundId);
-        adapter.save(round);
 
-        Round restoredRound = adapter.findById(roundId).orElseThrow();
+        StepVerifier.create(adapter.save(round)).verifyComplete();
 
-        assertEquals(RoundStatus.FINISHED, restoredRound.getStatus());
-        assertEquals(RoundResult.PLAYER_WIN, restoredRound.getResult());
+        StepVerifier.create(adapter.findById(roundId)).assertNext(restoredRound -> {
+            assertEquals(RoundStatus.FINISHED, restoredRound.getStatus());
+            assertEquals(RoundResult.PLAYER_WIN, restoredRound.getResult());
+        }).verifyComplete();
     }
 
     @Test
     void shouldReturnEmptyWhenRoundDoesNotExistInMongoDB() {
         UUID nonExistingRoundId = UUID.randomUUID();
 
-        Optional<Round> result = adapter.findById(nonExistingRoundId);
-
-        assertTrue(result.isEmpty());
+        StepVerifier.create(adapter.findById(nonExistingRoundId)).verifyComplete();
     }
 }

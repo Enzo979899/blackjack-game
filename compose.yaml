@@ -8,5 +8,20 @@ services:
       - blackjack-mongo-data:/data/db
     restart: unless-stopped
 
+  mysql:
+    image: mysql:8.4
+    container_name: blackjack-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: blackjack
+      MYSQL_USER: blackjack
+      MYSQL_PASSWORD: blackjackpass
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - blackjack-mysql-data:/var/lib/mysql
+    restart: unless-stopped
+
 volumes:
   blackjack-mongo-data:
+  blackjack-mysql-data:

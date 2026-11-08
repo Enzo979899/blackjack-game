@@ -82,4 +82,24 @@ class PlayerTest {
         assertEquals(1, player.getDraws());
     }
 
+    @Test
+    void shouldRestorePlayerWithExistingStatistics() {
+        UUID playerId = UUID.randomUUID();
+        Player player = new Player(playerId, "Enzo", 5, 2, 1);
+
+        assertEquals(playerId, player.getId());
+        assertEquals("Enzo", player.getName());
+        assertEquals(5, player.getWins());
+        assertEquals(2, player.getLosses());
+        assertEquals(1, player.getDraws());
+    }
+
+    @Test
+    void shouldRejectNegativeStatistics() {
+        UUID playerId = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new Player(playerId, "Enzo", -1, 2, 1));
+    }
+
 }

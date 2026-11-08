@@ -1,4 +1,3 @@
-
 package dev.enzo.blackjack.game.application.usecase;
 
 import dev.enzo.blackjack.game.application.port.out.DeckFactory;
@@ -12,6 +11,8 @@ import dev.enzo.blackjack.player.domain.model.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -35,6 +36,7 @@ class StartRoundServiceTest {
         eventPublisher = mock(RoundEventPublisher.class);
         deckFactory = mock(DeckFactory.class);
 
+        when(roundRepository.save(any(Round.class))).thenReturn(Mono.empty());
         service = new StartRoundService(playerRepository, roundRepository, eventPublisher, deckFactory);
     }
 
@@ -47,7 +49,7 @@ class StartRoundServiceTest {
 
     private void givenExistingPlayer(UUID playerId) {
         Player player = new Player(playerId, "Enzo");
-        when(playerRepository.findById(playerId)).thenReturn(Optional.of(player));
+        when(playerRepository.findById(playerId)).thenReturn(Mono.just(player));
     }
 
     private void giveDeckWithoutBlackjack() {
@@ -62,19 +64,20 @@ class StartRoundServiceTest {
         givenExistingPlayer(playerId);
         giveDeckWithoutBlackjack();
 
-        UUID roundId = service.startRound(playerId);
-
-        assertNotNull(roundId);
-
         ArgumentCaptor<Round> captor = ArgumentCaptor.forClass(Round.class);
 
-        verify(roundRepository).save(captor.capture());
+        StepVerifier.create(service.startRound(playerId)).assertNext(roundId -> {
+            assertNotNull(roundId);
 
-        Round savedRound = captor.getValue();
+            verify(roundRepository).save(captor.capture());
 
-        assertEquals(roundId, savedRound.getRoundId());
-        assertEquals(playerId, savedRound.getPlayerId());
-        assertEquals(RoundStatus.PLAYER_TURN, savedRound.getStatus());
+            Round savedRound = captor.getValue();
+
+            assertEquals(roundId, savedRound.getRoundId());
+            assertEquals(playerId, savedRound.getPlayerId());
+            assertEquals(RoundStatus.PLAYER_TURN, savedRound.getStatus());
+        }).verifyComplete();
+
         verify(playerRepository).findById(playerId);
         verify(deckFactory).createDeck();
     }
@@ -83,9 +86,9 @@ class StartRoundServiceTest {
     void shouldRejectNonExistingPlayer() {
         UUID playerId = UUID.randomUUID();
 
-        when(playerRepository.findById(playerId)).thenReturn(Optional.empty());
+        when(playerRepository.findById(playerId)).thenReturn(Mono.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> service.startRound(playerId));
+        StepVerifier.create(service.startRound(playerId)).expectError(IllegalArgumentException.class).verify();
 
         verify(roundRepository, never()).save(any(Round.class));
         verifyNoInteractions(deckFactory, eventPublisher);
@@ -93,22 +96,24 @@ class StartRoundServiceTest {
 
     @Test
     void shouldRejectNullPlayerId() {
-        assertThrows(NullPointerException.class, () -> service.startRound(null));
+        StepVerifier.create(service.startRound(null)).expectError(NullPointerException.class).verify();
 
-        verifyNoInteractions(playerRepository, roundRepository, eventPublisher, deckFactory);
+        verifyNoInteractions(playerRepository, eventPublisher, deckFactory);
+        verify(roundRepository, never()).save(any(Round.class));
     }
 
     @Test
     void shouldGenerateDifferentIdsForDifferentRounds() {
-
         UUID playerId = UUID.randomUUID();
 
         givenExistingPlayer(playerId);
         giveDeckWithoutBlackjack();
 
-        UUID firstRoundId = service.startRound(playerId);
-        UUID secondRoundId = service.startRound(playerId);
+        UUID firstRoundId = service.startRound(playerId).block();
+        UUID secondRoundId = service.startRound(playerId).block();
 
+        assertNotNull(firstRoundId);
+        assertNotNull(secondRoundId);
         assertNotEquals(firstRoundId, secondRoundId);
         verify(roundRepository, times(2)).save(any(Round.class));
         verify(deckFactory, times(2)).createDeck();
@@ -116,17 +121,17 @@ class StartRoundServiceTest {
 
     @Test
     void shouldRejectNullDependencies() {
-        assertThrows(NullPointerException.class, () -> new StartRoundService(null, roundRepository,
-                        eventPublisher, deckFactory));
+        assertThrows(NullPointerException.class,
+                () -> new StartRoundService(null, roundRepository, eventPublisher, deckFactory));
 
-        assertThrows(NullPointerException.class, () -> new StartRoundService(playerRepository, null,
-                        eventPublisher, deckFactory));
+        assertThrows(NullPointerException.class,
+                () -> new StartRoundService(playerRepository, null, eventPublisher, deckFactory));
 
-        assertThrows(NullPointerException.class, () ->
-                new StartRoundService(playerRepository, roundRepository, null, deckFactory));
+        assertThrows(NullPointerException.class,
+                () -> new StartRoundService(playerRepository, roundRepository, null, deckFactory));
 
-        assertThrows(NullPointerException.class, () -> new StartRoundService(playerRepository, roundRepository,
-                eventPublisher, null));
+        assertThrows(NullPointerException.class,
+                () -> new StartRoundService(playerRepository, roundRepository, eventPublisher, null));
     }
 
     @Test
@@ -140,18 +145,21 @@ class StartRoundServiceTest {
 
         when(deckFactory.createDeck()).thenReturn(deck);
 
-        UUID roundId = service.startRound(playerId);
+        when(eventPublisher.publish(any(RoundFinishedEvent.class))).thenReturn(Mono.empty());
+
         ArgumentCaptor<RoundFinishedEvent> captor = ArgumentCaptor.forClass(RoundFinishedEvent.class);
 
-        var inOrder = inOrder(roundRepository, eventPublisher);
+        StepVerifier.create(service.startRound(playerId)).assertNext(roundId -> {
+            var inOrder = inOrder(roundRepository, eventPublisher);
 
-        inOrder.verify(roundRepository).save(any(Round.class));
-        inOrder.verify(eventPublisher).publish(captor.capture());
-        RoundFinishedEvent event = captor.getValue();
+            inOrder.verify(roundRepository).save(any(Round.class));
+            inOrder.verify(eventPublisher).publish(captor.capture());
+            RoundFinishedEvent event = captor.getValue();
 
-        assertEquals(roundId, event.roundId());
-        assertEquals(playerId, event.playerId());
-        assertEquals(RoundResult.PLAYER_WIN, event.result());
+            assertEquals(roundId, event.roundId());
+            assertEquals(playerId, event.playerId());
+            assertEquals(RoundResult.PLAYER_WIN, event.result());
+        }).verifyComplete();
     }
 
     @Test
@@ -161,7 +169,7 @@ class StartRoundServiceTest {
         givenExistingPlayer(playerId);
         giveDeckWithoutBlackjack();
 
-        service.startRound(playerId);
+        StepVerifier.create(service.startRound(playerId)).expectNextCount(1).verifyComplete();
 
         verify(roundRepository).save(any(Round.class));
         verifyNoInteractions(eventPublisher);

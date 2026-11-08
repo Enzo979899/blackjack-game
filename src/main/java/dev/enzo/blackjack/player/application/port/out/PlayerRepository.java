@@ -1,16 +1,16 @@
 package dev.enzo.blackjack.player.application.port.out;
 
 import dev.enzo.blackjack.player.domain.model.Player;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface PlayerRepository {
 
-    void save(Player player);
+    Mono<Void> save(Player player);
 
-    Optional<Player> findById(UUID playerId);
+    Mono<Player> findById(UUID playerId);
 
-    List<Player> findAll();
+    Flux<Player> findAll();
 }

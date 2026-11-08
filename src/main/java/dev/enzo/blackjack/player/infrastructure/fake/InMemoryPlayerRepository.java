@@ -2,6 +2,8 @@ package dev.enzo.blackjack.player.infrastructure.fake;
 
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import dev.enzo.blackjack.player.domain.model.Player;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -14,18 +16,18 @@ public class InMemoryPlayerRepository implements PlayerRepository {
     private final Map<UUID, Player> players = new ConcurrentHashMap<>();
 
     @Override
-    public void save(Player player) {
-        players.put(player.getId(), player);
+    public Mono<Void> save(Player player) {
+        return Mono.fromRunnable(() -> players.put(player.getId(), player));
     }
 
     @Override
-    public Optional<Player> findById(UUID playerId) {
-        return Optional.ofNullable(players.get(playerId));
+    public Mono<Player> findById(UUID playerId) {
+        return Mono.defer(() -> Mono.justOrEmpty(players.get(playerId)));
     }
 
     @Override
-    public List<Player> findAll() {
-        return List.copyOf(players.values());
+    public Flux<Player> findAll() {
+        return Flux.defer(() -> Flux.fromIterable(players.values()));
     }
 
 }

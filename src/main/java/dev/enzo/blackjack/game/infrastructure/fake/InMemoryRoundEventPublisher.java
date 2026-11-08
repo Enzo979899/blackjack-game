@@ -3,6 +3,7 @@ package dev.enzo.blackjack.game.infrastructure.fake;
 import dev.enzo.blackjack.game.application.port.out.RoundEventPublisher;
 import dev.enzo.blackjack.game.domain.event.RoundFinishedEvent;
 import dev.enzo.blackjack.player.application.port.in.RecordRoundResultUseCase;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 
@@ -16,7 +17,7 @@ public class InMemoryRoundEventPublisher implements RoundEventPublisher {
     }
 
     @Override
-    public void publish(RoundFinishedEvent event) {
-        recordRoundResultUseCase.recordResult(event);
+    public Mono<Void> publish(RoundFinishedEvent event) {
+        return Mono.defer(() -> recordRoundResultUseCase.recordResult(event));
     }
 }

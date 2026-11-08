@@ -22,6 +22,20 @@ public class Player {
         }
     }
 
+
+    public Player(UUID id, String name, int wins, int losses, int draws) {
+        this(id, name);
+
+        if (wins < 0 || losses < 0 || draws < 0) {
+            throw new IllegalArgumentException("Player statistics cannot be negative");
+        }
+
+        this.wins = wins;
+        this.losses = losses;
+        this.draws = draws;
+    }
+
+
     public UUID getId() {
         return id;
     }

@@ -1,14 +1,15 @@
 package dev.enzo.blackjack.game.application.port.out;
 
 import dev.enzo.blackjack.game.domain.model.Round;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 import java.util.UUID;
 
 public interface RoundRepository {
 
-    void save(Round round);
+    Mono<Void> save(Round round);
 
-    Optional<Round> findById(UUID roundId);
+    Mono<Round> findById(UUID roundId);
 
 }
