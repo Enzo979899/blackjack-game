@@ -5,9 +5,9 @@ import dev.enzo.blackjack.game.application.port.out.DeckFactory;
 import dev.enzo.blackjack.game.application.port.out.RoundEventPublisher;
 import dev.enzo.blackjack.game.application.port.out.RoundRepository;
 import dev.enzo.blackjack.game.domain.event.RoundFinishedEvent;
-import dev.enzo.blackjack.game.domain.model.Deck;
 import dev.enzo.blackjack.game.domain.model.Round;
 import dev.enzo.blackjack.game.domain.model.RoundStatus;
+import dev.enzo.blackjack.player.application.exception.PlayerNotFoundException;
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import reactor.core.publisher.Mono;
 
@@ -34,7 +34,7 @@ public class StartRoundService implements StartRoundUseCase {
             Objects.requireNonNull(playerId, "Player ID cannot be null");
 
             return playerRepository.findById(playerId)
-                    .switchIfEmpty(Mono.error(new IllegalArgumentException("Player not found: " + playerId)))
+                    .switchIfEmpty(Mono.error(new PlayerNotFoundException(playerId)))
                     .flatMap(player -> {
                         UUID roundId = UUID.randomUUID();
                         Round round = new Round(roundId, player.getId(), deckFactory.createDeck());
