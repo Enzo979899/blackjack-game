@@ -5,6 +5,7 @@ import dev.enzo.blackjack.game.application.port.out.RoundEventPublisher;
 import dev.enzo.blackjack.game.application.port.out.RoundRepository;
 import dev.enzo.blackjack.game.domain.event.RoundFinishedEvent;
 import dev.enzo.blackjack.game.domain.model.*;
+import dev.enzo.blackjack.player.application.exception.PlayerNotFoundException;
 import dev.enzo.blackjack.player.application.port.out.PlayerRepository;
 import dev.enzo.blackjack.player.domain.model.Player;
 
@@ -15,7 +16,6 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -88,7 +88,7 @@ class StartRoundServiceTest {
 
         when(playerRepository.findById(playerId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(service.startRound(playerId)).expectError(IllegalArgumentException.class).verify();
+        StepVerifier.create(service.startRound(playerId)).expectError(PlayerNotFoundException.class).verify();
 
         verify(roundRepository, never()).save(any(Round.class));
         verifyNoInteractions(deckFactory, eventPublisher);

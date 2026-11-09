@@ -1,5 +1,6 @@
 package dev.enzo.blackjack.game.application.usecase;
 
+import dev.enzo.blackjack.game.application.exception.RoundNotFoundException;
 import dev.enzo.blackjack.game.application.port.out.RoundEventPublisher;
 import dev.enzo.blackjack.game.application.port.out.RoundRepository;
 import dev.enzo.blackjack.game.domain.event.RoundFinishedEvent;
@@ -13,7 +14,6 @@ import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,7 +63,7 @@ class StandRoundServiceTest {
 
         when(repository.findById(roundId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(service.stand(roundId)).expectError(IllegalArgumentException.class).verify();
+        StepVerifier.create(service.stand(roundId)).expectError(RoundNotFoundException.class).verify();
 
         verify(repository).findById(roundId);
         verify(repository, never()).save(any(Round.class));

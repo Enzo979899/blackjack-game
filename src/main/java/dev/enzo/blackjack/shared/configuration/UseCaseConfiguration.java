@@ -3,6 +3,7 @@ package dev.enzo.blackjack.shared.configuration;
 import dev.enzo.blackjack.game.application.port.out.DeckFactory;
 import dev.enzo.blackjack.game.application.port.out.RoundEventPublisher;
 import dev.enzo.blackjack.game.application.port.out.RoundRepository;
+import dev.enzo.blackjack.game.application.usecase.GetRoundService;
 import dev.enzo.blackjack.game.application.usecase.HitRoundService;
 import dev.enzo.blackjack.game.application.usecase.StandRoundService;
 import dev.enzo.blackjack.game.application.usecase.StartRoundService;
@@ -89,6 +90,11 @@ public class UseCaseConfiguration {
     public StandRoundService standRoundService(RoundRepository roundRepository,
                                                RoundEventPublisher roundEventPublisher) {
         return new StandRoundService(roundRepository, roundEventPublisher);
+    }
+
+    @Bean
+    public GetRoundService getRoundService(RoundRepository roundRepository) {
+        return new GetRoundService(roundRepository);
     }
 
 }
