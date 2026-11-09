@@ -1,5 +1,6 @@
 package dev.enzo.blackjack.game.infrastructure.in.web;
 
+import dev.enzo.blackjack.game.application.exception.RoundNotFoundException;
 import dev.enzo.blackjack.player.application.exception.PlayerNotFoundException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -26,5 +27,17 @@ public class RoundExceptionHandler {
     public ResponseEntity<Map<String, String>> handlePlayerNotFound(PlayerNotFoundException exception) {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(RoundNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleRoundNotFound(RoundNotFoundException exception) {
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidRoundState(IllegalStateException exception) {
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 }

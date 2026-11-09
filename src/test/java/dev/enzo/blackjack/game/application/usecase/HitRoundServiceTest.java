@@ -1,5 +1,6 @@
 package dev.enzo.blackjack.game.application.usecase;
 
+import dev.enzo.blackjack.game.application.exception.RoundNotFoundException;
 import dev.enzo.blackjack.game.application.port.out.RoundEventPublisher;
 import dev.enzo.blackjack.game.application.port.out.RoundRepository;
 import dev.enzo.blackjack.game.domain.event.RoundFinishedEvent;
@@ -58,7 +59,7 @@ class HitRoundServiceTest {
 
         when(repository.findById(roundId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(service.hit(roundId)).expectError(IllegalArgumentException.class).verify();
+        StepVerifier.create(service.hit(roundId)).expectError(RoundNotFoundException.class).verify();
         verify(repository).findById(roundId);
         verify(repository, never()).save(any(Round.class));
         verifyNoInteractions(eventPublisher);

@@ -1,5 +1,6 @@
 package dev.enzo.blackjack.game.infrastructure.in.web;
 
+import dev.enzo.blackjack.game.application.port.in.HitRoundUseCase;
 import dev.enzo.blackjack.game.application.port.in.StartRoundUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -12,9 +13,11 @@ import java.util.UUID;
 @RequestMapping("/api/rounds")
 public class RoundController {
     private final StartRoundUseCase startRoundUseCase;
+    private final HitRoundUseCase hitRoundUseCase;
 
-    public RoundController(StartRoundUseCase startRoundUseCase) {
+    public RoundController(StartRoundUseCase startRoundUseCase, HitRoundUseCase hitRoundUseCase) {
         this.startRoundUseCase = startRoundUseCase;
+        this.hitRoundUseCase = hitRoundUseCase;
     }
 
     @PostMapping
@@ -22,6 +25,12 @@ public class RoundController {
     public Mono<UUID> startRound(@Valid @RequestBody StartRoundRequest request) {
 
         return startRoundUseCase.startRound(request.playerId());
+    }
+
+    @PostMapping("/{roundId}/hit")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> hit(@PathVariable UUID roundId) {
+        return hitRoundUseCase.hit(roundId);
     }
 
 
