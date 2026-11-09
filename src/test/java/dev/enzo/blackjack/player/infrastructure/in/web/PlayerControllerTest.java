@@ -2,6 +2,7 @@ package dev.enzo.blackjack.player.infrastructure.in.web;
 
 import dev.enzo.blackjack.player.application.dto.CreatePlayerResult;
 import dev.enzo.blackjack.player.application.port.in.CreatePlayerUseCase;
+import dev.enzo.blackjack.shared.infrastructure.in.web.GlobalValidationExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -41,7 +42,7 @@ class PlayerControllerTest {
         CreatePlayerUseCase useCase = mock(CreatePlayerUseCase.class);
 
         WebTestClient client = WebTestClient.bindToController(new PlayerController(useCase))
-                .controllerAdvice(new PlayerExceptionHandler()).build();
+                .controllerAdvice(new PlayerExceptionHandler(), new GlobalValidationExceptionHandler()).build();
 
         client.post().uri("/api/players").contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
@@ -60,7 +61,7 @@ class PlayerControllerTest {
         CreatePlayerUseCase useCase = mock(CreatePlayerUseCase.class);
 
         WebTestClient client = WebTestClient.bindToController(new PlayerController(useCase))
-                .controllerAdvice(new PlayerExceptionHandler()).build();
+                .controllerAdvice(new PlayerExceptionHandler(), new GlobalValidationExceptionHandler()).build();
 
         client.post().uri("/api/players").contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
@@ -79,7 +80,7 @@ class PlayerControllerTest {
         CreatePlayerUseCase useCase = mock(CreatePlayerUseCase.class);
 
         WebTestClient client = WebTestClient.bindToController(new PlayerController(useCase))
-                .controllerAdvice(new PlayerExceptionHandler()).build();
+                .controllerAdvice(new PlayerExceptionHandler(), new GlobalValidationExceptionHandler()).build();
 
         client.post().uri("/api/players").contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""

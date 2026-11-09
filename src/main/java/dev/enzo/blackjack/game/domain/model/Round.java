@@ -1,6 +1,8 @@
 package dev.enzo.blackjack.game.domain.model;
 
 
+import dev.enzo.blackjack.game.domain.exception.InvalidRoundStateException;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -79,7 +81,7 @@ public class Round {
 
     public void start() {
         if (this.status != RoundStatus.WAITING_TO_START) {
-            throw new IllegalStateException("Round is already started!");
+            throw new InvalidRoundStateException("Round is already started!");
         }
         this.playerHand.addCard(this.deck.cardDraw());
         this.dealerHand.addCard(this.deck.cardDraw());
@@ -103,11 +105,11 @@ public class Round {
 
     public void hit() {
         if (this.status != RoundStatus.PLAYER_TURN) {
-            throw new IllegalStateException("It's not player turn!");
+            throw new InvalidRoundStateException("It's not the player's turn!");
         }
 
         if (this.playerHand.calculateScore() == 21) {
-            throw new IllegalStateException("Cannot hit with 21");
+            throw new InvalidRoundStateException("Cannot hit with 21");
         }
         this.playerHand.addCard(this.deck.cardDraw());
 
@@ -119,14 +121,14 @@ public class Round {
 
     public void stand() {
         if (this.status != RoundStatus.PLAYER_TURN) {
-            throw new IllegalStateException("It's not the player turn!");
+            throw new InvalidRoundStateException("It's not the player's turn!");
         }
         this.status = RoundStatus.DEALER_TURN;
     }
 
     public void playDealerTurn() {
         if (this.status != RoundStatus.DEALER_TURN) {
-            throw new IllegalStateException("It's not the dealer's turn!");
+            throw new InvalidRoundStateException("It's not the dealer's turn!");
         }
 
         while (this.dealerHand.calculateScore() < 17) {

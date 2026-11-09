@@ -5,8 +5,10 @@ import dev.enzo.blackjack.game.application.port.in.GetRoundUseCase;
 import dev.enzo.blackjack.game.application.port.in.HitRoundUseCase;
 import dev.enzo.blackjack.game.application.port.in.StandRoundUseCase;
 import dev.enzo.blackjack.game.application.port.in.StartRoundUseCase;
+import dev.enzo.blackjack.game.domain.exception.InvalidRoundStateException;
 import dev.enzo.blackjack.game.domain.model.*;
 import dev.enzo.blackjack.player.application.exception.PlayerNotFoundException;
+import dev.enzo.blackjack.shared.infrastructure.in.web.GlobalValidationExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -53,8 +55,9 @@ class RoundControllerTest {
         StandRoundUseCase standUseCase = mock(StandRoundUseCase.class);
         GetRoundUseCase getRoundUseCase = mock(GetRoundUseCase.class);
 
-        WebTestClient client = WebTestClient.bindToController(new RoundController(useCase, hitUseCase, standUseCase,
-                        getRoundUseCase)).controllerAdvice(new RoundExceptionHandler()).build();
+        WebTestClient client =
+                WebTestClient.bindToController(new RoundController(useCase, hitUseCase, standUseCase, getRoundUseCase))
+                        .controllerAdvice(new RoundExceptionHandler(), new GlobalValidationExceptionHandler()).build();
 
         client.post().uri("/api/rounds").contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
@@ -165,13 +168,14 @@ class RoundControllerTest {
         StandRoundUseCase standUseCase = mock(StandRoundUseCase.class);
         GetRoundUseCase getRoundUseCase = mock(GetRoundUseCase.class);
 
-        when(hitUseCase.hit(roundId)).thenReturn(Mono.error(new IllegalStateException("It's not player turn!")));
+        when(hitUseCase.hit(roundId))
+                .thenReturn(Mono.error(new InvalidRoundStateException("It's not the player's turn!")));
 
         WebTestClient client = WebTestClient.bindToController(new RoundController(startUseCase, hitUseCase,
                         standUseCase, getRoundUseCase)).controllerAdvice(new RoundExceptionHandler()).build();
 
         client.post().uri("/api/rounds/{roundId}/hit", roundId).exchange().expectStatus().isEqualTo(409)
-                .expectBody().jsonPath("$.error").isEqualTo("It's not player turn!");
+                .expectBody().jsonPath("$.error").isEqualTo("It's not the player's turn!");
 
         verify(hitUseCase).hit(roundId);
         verifyNoInteractions(startUseCase, standUseCase, getRoundUseCase);
@@ -186,7 +190,7 @@ class RoundControllerTest {
         StandRoundUseCase standUseCase = mock(StandRoundUseCase.class);
         GetRoundUseCase getRoundUseCase = mock(GetRoundUseCase.class);
 
-        when(hitUseCase.hit(roundId)).thenReturn(Mono.error(new IllegalStateException("Cannot hit with 21")));
+        when(hitUseCase.hit(roundId)).thenReturn(Mono.error(new InvalidRoundStateException("Cannot hit with 21")));
 
         WebTestClient client = WebTestClient.bindToController(new RoundController(startUseCase, hitUseCase,
                         standUseCase, getRoundUseCase)).controllerAdvice(new RoundExceptionHandler()).build();
@@ -250,13 +254,13 @@ class RoundControllerTest {
         GetRoundUseCase getRoundUseCase = mock(GetRoundUseCase.class);
 
         when(standUseCase.stand(roundId))
-                .thenReturn(Mono.error(new IllegalStateException("It's not the player turn!")));
+                .thenReturn(Mono.error(new InvalidRoundStateException("It's not the player's turn!")));
 
         WebTestClient client = WebTestClient.bindToController(new RoundController(startUseCase, hitUseCase,
                 standUseCase, getRoundUseCase)).controllerAdvice(new RoundExceptionHandler()).build();
 
         client.post().uri("/api/rounds/{roundId}/stand", roundId).exchange().expectStatus().isEqualTo(409)
-                .expectBody().jsonPath("$.error").isEqualTo("It's not the player turn!");
+                .expectBody().jsonPath("$.error").isEqualTo("It's not the player's turn!");
 
         verify(standUseCase).stand(roundId);
         verifyNoInteractions(startUseCase, hitUseCase, getRoundUseCase);
@@ -359,6 +363,28 @@ class RoundControllerTest {
 
         verify(getRoundUseCase).getRound(roundId);
         verifyNoInteractions(startUseCase, hitUseCase, standUseCase);
+    }
+
+    @Test
+    void shouldReturn500WhenUnexpectedIllegalStateExceptionOccurs() {
+        UUID roundId = UUID.randomUUID();
+
+        StartRoundUseCase startUseCase = mock(StartRoundUseCase.class);
+        HitRoundUseCase hitUseCase = mock(HitRoundUseCase.class);
+        StandRoundUseCase standUseCase = mock(StandRoundUseCase.class);
+        GetRoundUseCase getRoundUseCase = mock(GetRoundUseCase.class);
+
+        when(hitUseCase.hit(roundId)).thenReturn(Mono.error(new IllegalStateException("Unexpected internal error")));
+
+        WebTestClient client = WebTestClient.bindToController(new RoundController(startUseCase, hitUseCase,
+                standUseCase, getRoundUseCase)).controllerAdvice(new RoundExceptionHandler()).build();
+
+        client.post()
+                .uri("/api/rounds/{roundId}/hit", roundId)
+                .exchange()
+                .expectStatus().is5xxServerError();
+
+        verify(hitUseCase).hit(roundId);
     }
 
 }
